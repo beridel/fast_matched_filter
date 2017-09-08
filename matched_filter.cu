@@ -192,7 +192,7 @@ void matched_filter(float *templates, float *sum_square_templates,
 
             // define block and grid sizes for kernels
             dim3 BS(BLOCKSIZE);
-            dim3 GS(ceil((n_samples_data * n_components * n_stations) / (float)(BS.x * step)));
+            dim3 GS(ceilf((n_samples_data * n_components * n_stations) / (float)(BS.x * step)));
             
             // calculate the space required in the shared memory
             int count_template = (n_samples_template / 32 + 1) * 32;
@@ -246,7 +246,7 @@ void matched_filter(float *templates, float *sum_square_templates,
             // weighted sum of correlation coefficients
             cudaMemset(cc_sum_d, 0, sizeof_cc_sum);
 
-            dim3 GS_sum(ceil(n_corr_t / (float)BS.x));
+            dim3 GS_sum(ceilf(n_corr_t / (float)BS.x));
             sum_cc<<<GS_sum, BS>>>(cc_mat_d, cc_sum_d, weights_d_t, n_stations, n_corr_t);
 
             // return an error if something happened in the kernel (and crash the program)
