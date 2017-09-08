@@ -198,10 +198,10 @@ void matched_filter(float *templates, float *sum_square_templates,
             int count_template = (n_samples_template / 32 + 1) * 32;
             int count_data = ((n_samples_template + BLOCKSIZE * step) / 32 + 1) * 32;
             int sharedMem = (count_template + count_data) * sizeof(float);
-            if (sharedMem > maxSharedMem){
+            if (sharedMem > maxSharedMem) {
                 int new_step = (maxSharedMem/sizeof(float) - 2 * n_samples_template - 64) / BLOCKSIZE;
                 int new_length = maxSharedMem/sizeof(float) - count_data - 32;
-                if (new_length < 0) new_length=0;
+                if (new_length < 0) new_length = 0;
                 printf("The maximum shared memory available on this card is %i bytes "\
                         "(%i bytes required). You should consider the different options:\n"\
                         "  - Change the temporal step to %i without changing the template length.\n"\
