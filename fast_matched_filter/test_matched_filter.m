@@ -1,5 +1,5 @@
 %NB all data and templates must have their mean removed
-% otherwise, simplied correlation coefficient equation is no
+% otherwise, simplified correlation coefficient equation is no
 % longer valid!!!
 % this is already the case for this mean zero random data/templates
 % but not necessarily the case for real data

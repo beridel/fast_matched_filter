@@ -24,7 +24,7 @@ LDFLAGS_GPU=--shared
 
 # CPU FLAGS
 COPTIMFLAGS_CPU=-O3
-CFLAGS_CPU=-fopenmp -fPIC
+CFLAGS_CPU=-fopenmp -fPIC -ftree-vectorize
 LDFLAGS_CPU=-shared
 
 # MEX FLAGS
@@ -33,15 +33,15 @@ CFLAGS_MEX=-fopenmp -fPIC
 LDFLAGS_MEX=-fopenmp -shared # who knows why mex needs fopenmp again
 
 # build for python
-matched_filter_GPU.so: matched_filter.cu
-	$(NVCC) $(COPTIMFLAGS_GPU) $(CFLAGS_GPU) $(CARDDEPENDENTFLAG) $(LDFLAGS_GPU) $< -o $@
+matched_filter_GPU.so: fast_mastched_filter/src/matched_filter.cu
+	$(NVCC) $(COPTIMFLAGS_GPU) $(CFLAGS_GPU) $(CARDDEPENDENTFLAG) $(LDFLAGS_GPU) $< -o fast_matched_filter/lib/$@
 
-matched_filter_CPU.so: matched_filter.c
-	$(CC) $(COPTIMFLAGS_CPU) $(CFLAGS_CPU) $(LDFLAGS_CPU) $< -o $@
+matched_filter_CPU.so: fast_matched_filter/src/matched_filter.c
+	$(CC) $(COPTIMFLAGS_CPU) $(CFLAGS_CPU) $(LDFLAGS_CPU) $< -o fast_matched_filter/lib/$@
 
 # build for Matlab
-matched_filter.mexa64: matched_filter_mex.c matched_filter.c
-	$(MEX) COPTIMFLAGS="$(COPTIMFLAGS_MEX)" CFLAGS="$(CFLAGS_MEX)" LDFLAGS="$(LDFLAGS_MEX)" -output $@ $^
+matched_filter.mexa64: fast_matched_filter/src/matched_filter_mex.c fast_matched_filter/src/matched_filter.c
+	$(MEX) COPTIMFLAGS="$(COPTIMFLAGS_MEX)" CFLAGS="$(CFLAGS_MEX)" LDFLAGS="$(LDFLAGS_MEX)" -output fast_matched_filter/$@ $^
 
 clean:
-	rm *.so *.mex* *.pyc
+	rm lib/*.so *.mex* *.pyc
