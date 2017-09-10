@@ -163,3 +163,6 @@ ENV/
 
 # PyCharm
 .idea
+
+# Matlab Mex
+*.mex*
