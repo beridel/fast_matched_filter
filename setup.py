@@ -9,7 +9,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 # TODO: Set up compilation of both CPU and GPU libs (if hardware supported)
-setup(name='FastMatchedFilterPy',
+setup(name='FastMatchedFilter',
       version='0.0.1',
       description='Fast time-domain normalised cross-correlation for '
                   'CPU & GPU',
