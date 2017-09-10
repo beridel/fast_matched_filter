@@ -5,20 +5,25 @@
 %     (https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 function [cc_sum] = fast_matched_filter(templates, moveouts, weights, data, step)
+% input:
+% templates ---------- 4D matrix [time x components x stations x templates]
+% n_samples_template - 2D matrix [stations x templates]
+% moveouts ----------- 2D matrix [stations x templates]
+% data --------------- 3D matrix [time x components x stations]
+% step --------------- interval between correlations (in samples)
+%
+% NB: Mean and trend MUST be removed from template and data traces before
+%     using this function
+%
+% output:
+% 2D matrix [times x templates (at step defined interval)]
 n_samples_template = size(templates, 1);
 n_components = size(templates, 2);
 n_stations = size(templates, 3);
 n_templates = size(templates, 4);
 n_samples_data = size(data, 1);
 
-sum_square_templates = zeros(n_components, n_stations, n_templates);
-for t = 1:n_templates
-    for s = 1:n_stations
-        for c = 1:n_components
-            sum_square_templates(c,s,t) = sum(templates(:,c,s,t) .^ 2);
-        end
-    end
-end
+sum_square_templates = squeeze(sum(templates .^ 2, 1));
 
 csum_square_data = zeros(n_samples_data + 1, n_components, n_stations);
 csum_square_data(2:end,:,:) = cumsum(data .^ 2);
