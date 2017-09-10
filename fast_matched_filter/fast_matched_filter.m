@@ -1,3 +1,9 @@
+% :copyright:
+%     William B. Frank and Eric Beauce
+% :license:
+%     GNU General Public License, Version 3
+%     (https://www.gnu.org/licenses/gpl-3.0.en.html)
+
 function [cc_sum] = fast_matched_filter(templates, moveouts, weights, data, step)
 n_samples_template = size(templates, 1);
 n_components = size(templates, 2);

@@ -1,3 +1,9 @@
+% :copyright:
+%     William B. Frank and Eric Beauce
+% :license:
+%     GNU General Public License, Version 3
+%     (https://www.gnu.org/licenses/gpl-3.0.en.html)
+
 %NB all data and templates must have their mean removed
 % otherwise, simplified correlation coefficient equation is no
 % longer valid!!!

@@ -1,3 +1,11 @@
+/*
+:copyright:
+    William B. Frank and Eric Beauce
+:license:
+    GNU General Public License, Version 3
+    (https://www.gnu.org/licenses/gpl-3.0.en.html)
+*/
+
 #include <cuda.h>
 #include <stdio.h>
 #include <stdlib.h>
