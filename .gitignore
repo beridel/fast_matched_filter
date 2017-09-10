@@ -67,7 +67,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -82,6 +81,9 @@ wheels/
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+build
+dist
+FastMatchFilterPy.egg-info
 
 # Installer logs
 pip-log.txt
@@ -158,6 +160,9 @@ ENV/
 *.ptx
 *.cubin
 *.fatbin
+
+# PyCharm
+.idea
 
 # Matlab Mex
 *.mex*

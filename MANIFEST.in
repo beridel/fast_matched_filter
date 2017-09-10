@@ -1,0 +1,13 @@
+# Manifest file for Python distribution - only list files required for Python
+include fast_matched_filter/src/matched_filter.c
+include fast_matched_filter/src/matched_filter.cu
+include fast_matched_filter/src/matched_filter_CPU.h
+include fast_matched_filter/src/matched_filter_GPU.h
+include fast_matched_filter/__init__.py
+include fast_matched_filter/fast_matched_filter.py
+include fast_matched_filter/lib/__init__.py
+include fast_matched_filter/lib/*.so
+include LICENSE
+include Makefile
+include README.md
+include setup.py
