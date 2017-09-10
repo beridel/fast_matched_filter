@@ -124,8 +124,13 @@ def matched_filter(templates, weights, moveouts, data, step, arch='cpu'):
             data.ctypes.data_as(ct.POINTER(ct.c_float)),
             csum_square_data.ctypes.data_as(ct.POINTER(ct.c_float)),
             weights.ctypes.data_as(ct.POINTER(ct.c_float)),
-            step, n_samples_template, n_samples_data, n_templates,
-            n_stations, n_components, n_corr,
+            step,
+            n_samples_template,
+            n_samples_data,
+            n_templates,
+            n_stations,
+            n_components,
+            n_corr,
             cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
 
     elif arch == 'gpu':
@@ -137,8 +142,13 @@ def matched_filter(templates, weights, moveouts, data, step, arch='cpu'):
                 moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
                 data.ctypes.data_as(ct.POINTER(ct.c_float)),
                 weights.ctypes.data_as(ct.POINTER(ct.c_float)),
-                step, n_samples_template, n_samples_data, n_templates,
-                n_stations, n_components, n_corr,
+                step,
+                n_samples_template,
+                n_samples_data,
+                n_templates,
+                n_stations,
+                n_components,
+                n_corr,
                 cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
 
     return cc_sums.reshape((n_templates, n_corr))
@@ -158,8 +168,8 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     max_moveout = 10
     moveouts = np.zeros((n_templates, n_stations))
     for t in range(n_templates):
-        moveouts[t, :] = np.random.random_sample(
-            n_stations) * (max_moveout - min_moveout) + min_moveout
+        moveouts[t, :] = (np.random.random_sample(n_stations)
+                          * (max_moveout - min_moveout)) + min_moveout
     moveouts = np.round(moveouts * sampling_rate)
 
     # generate data
@@ -172,7 +182,9 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     # generate templates from data
     n_samples_template = template_duration * sampling_rate
     n_templates = template_times.size
-    templates = np.zeros((n_templates, n_stations, n_components,
+    templates = np.zeros((n_templates,
+                          n_stations,
+                          n_components,
                           n_samples_template))
     for t in range(n_templates):
         start_t = template_times[t] * sampling_rate
@@ -188,7 +200,11 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     weights = np.ones((n_templates, n_stations)) / n_stations
 
     start_time = dt.datetime.now()
-    cc_sum = matched_filter(templates, weights, moveouts, data, step,
+    cc_sum = matched_filter(templates,
+                            weights,
+                            moveouts,
+                            data,
+                            step,
                             arch=arch)
     stop_time = dt.datetime.now()
 
