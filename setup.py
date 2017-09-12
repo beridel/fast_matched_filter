@@ -20,7 +20,7 @@ class FastMatchedFilterBuild(build):
     def run(self):
         # Run standard python build things
         build.run(self)
-        # Build the Python libraries
+        # Build the Python libraries via Makefile
         cpu_make = ['make', 'python_cpu']
         gpu_make = ['make', 'python_gpu']
 
@@ -50,7 +50,6 @@ class FastMatchedFilterInstall(install):
 with open('README.md') as f:
     long_description = f.read()
 
-# TODO: Set up compilation of both CPU and GPU libs (if hardware supported)
 setup(name='FastMatchedFilter',
       version='0.0.1',
       description='Fast time-domain normalised cross-correlation for '
