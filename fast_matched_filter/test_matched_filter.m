@@ -65,5 +65,5 @@ weights = ones(n_stations, n_templates) / n_stations;
 %% C matched filter
 tic;
 cc_sum = fast_matched_filter(templates, moveouts, weights, data, step);
-fprintf('Done step %d in %.2f seconds!\n', step, toc);
+fprintf('Done in %.2f seconds!\n', toc);
 
