@@ -67,7 +67,7 @@ def matched_filter(templates, weights, moveouts, data, step, arch='cpu'):
     input:
     templates ---------- 4D numpy array (np.float32) [templates x stations x
                          components x time]
-    n_samples_template - 2D numpy array (np.int32) [templates x stations]
+    weights ------------ 2D numpy array (np.float32) [templates x stations]
     moveouts ----------- 2D numpy array (np.int32) [templates x stations]
     data --------------- 3D numpy array (np.float32) [stations x components x
                          time]
