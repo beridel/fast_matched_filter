@@ -14,6 +14,7 @@
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 
 #define BLOCKSIZE 512
+#define WARPSIZE 32
 
 extern "C" { // needed for C-style symbols in shared object compiled by nvcc
 #include "matched_filter_GPU.h"
@@ -39,11 +40,11 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
     int i, s, c; // counters
     int data_offset, templates_offset, sum_square_template_offset, cc_mat_offset;
     float numerator, sum_square_data;
-    float data_sample, template_sample;
+    float data_sample;
     int t_idx;
 
     //------------------------------------------------
-    int count_template = (n_samples_template / 32 + 1) * 32;
+    int count_template = (n_samples_template / WARPSIZE + 1) * WARPSIZE;
     extern __shared__ float shared[];
     float *templates_s = &shared[0];
     float *data_s = &shared[count_template];
@@ -67,12 +68,12 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
     // load template and data into shared memory
     t_idx = threadIdx.x;
     while(t_idx < n_samples_template) {
-        templates_s[t_idx] = __ldg(&templates[templates_offset + t_idx]);
-        data_s[t_idx] = __ldg(&data[data_offset + t_idx]);
+        templates_s[t_idx] = templates[templates_offset + t_idx];
+        data_s[t_idx] = data[data_offset + t_idx];
         t_idx += blockDim.x;
     }
     while(t_idx < (blockDim.x * step + n_samples_template)){
-        data_s[t_idx] = __ldg(&data[data_offset + t_idx]);
+        data_s[t_idx] = data[data_offset + t_idx];
         t_idx += blockDim.x;
     }
 
@@ -82,12 +83,11 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
         // calculate correlation coefficient
         for(i = 0; i < n_samples_template; i++) {
             data_sample = data_s[i + threadIdx.x * step];
-            template_sample = templates_s[i];
-            numerator += data_sample * template_sample;
+            numerator += data_sample * templates_s[i];
             sum_square_data += data_sample * data_sample; 
         }
 
-        cc_mat[cc_mat_offset + s] += (numerator * rsqrtf(sum_square_data * sum_square_template[sum_square_template_offset])) / (float)n_components;
+        cc_mat[cc_mat_offset + s] += (numerator * rsqrtf(sum_square_data * sum_square_template[sum_square_template_offset])) / n_components;
     }
     __syncthreads(); // wait for every thread to finish before leaving the kernel
 }
@@ -203,12 +203,12 @@ void matched_filter(float *templates, float *sum_square_templates,
             dim3 GS(ceilf((n_samples_data * n_components * n_stations) / (float)(BS.x * step)));
             
             // calculate the space required in the shared memory
-            int count_template = (n_samples_template / 32 + 1) * 32;
-            int count_data = ((n_samples_template + BLOCKSIZE * step) / 32 + 1) * 32;
+            int count_template = (n_samples_template / WARPSIZE + 1) * WARPSIZE;
+            int count_data = ((n_samples_template + BLOCKSIZE * step) / WARPSIZE + 1) * WARPSIZE;
             int sharedMem = (count_template + count_data) * sizeof(float);
             if (sharedMem > maxSharedMem) {
-                int new_step = (maxSharedMem/sizeof(float) - 2 * n_samples_template - 64) / BLOCKSIZE;
-                int new_length = maxSharedMem/sizeof(float) - count_data - 32;
+                int new_step = (maxSharedMem/sizeof(float) - 2 * n_samples_template - 2 * WARPSIZE) / BLOCKSIZE;
+                int new_length = maxSharedMem/sizeof(float) - count_data - WARPSIZE;
                 if (new_length < 0) new_length = 0;
                 printf("The maximum shared memory available on this card is %i bytes "\
                         "(%i bytes required). You should consider the different options:\n"\
