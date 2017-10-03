@@ -21,7 +21,7 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     int n_templates, n_stations, n_components, n_corr; // size input
     float *cc_sum; // output
     int t, station_offset, s;
-    size_t n_samples_out;
+    int n_samples_out;
     
     /* check for good number of inputs/outputs */
     if (nInputs != 13)
