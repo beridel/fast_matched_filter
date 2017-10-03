@@ -167,7 +167,7 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     output: templates, moveouts, data, step, cc_sum
     """
 
-    template_times = np.ones(n_templates) * 5
+    template_times = np.random.random_sample(n_templates) * (data_duration / 2)
     # determines how many templates there are
 
     min_moveout = 0
