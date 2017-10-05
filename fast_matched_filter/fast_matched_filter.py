@@ -62,16 +62,16 @@ except OSError:
     gpu_loaded = False
 
 
-def matched_filter(templates, weights, moveouts, data, step, arch='cpu'):
+def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     """
     input:
-    templates ---------- 4D numpy array (np.float32) [templates x stations x
+    templates ---------- 4D numpy array [templates x stations x
                          components x time]
-    n_samples_template - 2D numpy array (np.int32) [templates x stations]
-    moveouts ----------- 2D numpy array (np.int32) [templates x stations]
-    data --------------- 3D numpy array (np.float32) [stations x components x
+    moveouts ----------- 2D numpy array [templates x stations]
+    weights ------------ 2D numpy array [templates x stations]
+    data --------------- 3D numpy array [stations x components x
                          time]
-    step --------------- np.int32 interval between correlations (in samples)
+    step --------------- interval between correlations (in samples)
 
     NB: Mean and trend MUST be removed from template and data traces before
         using this function
@@ -207,8 +207,8 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
     start_time = dt.datetime.now()
     cc_sum = matched_filter(templates,
-                            weights,
                             moveouts,
+                            weights,
                             data,
                             step,
                             arch=arch)
