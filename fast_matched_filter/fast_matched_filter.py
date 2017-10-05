@@ -72,6 +72,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     data --------------- 3D numpy array [stations x components x
                          time]
     step --------------- interval between correlations (in samples)
+    arch --------------- 'cpu' or 'gpu' implementation
 
     NB: Mean and trend MUST be removed from template and data traces before
         using this function
@@ -80,9 +81,9 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     2D numpy array (np.float32) [templates x time (at step defined interval)]
     """
 
-    if arch == 'cpu' and cpu_loaded is False:
+    if arch.lower() == 'cpu' and cpu_loaded is False:
         loaded = False
-    elif arch == 'gpu' and gpu_loaded is False:
+    elif arch.lower() == 'gpu' and gpu_loaded is False:
         loaded = False
     else:
         loaded = True
