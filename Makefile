@@ -7,8 +7,8 @@ libdir=$(maindir)/lib
 # compiler (like gcc)! The default clang compiler is not OpenMP-friendly. To easily install gcc
 # with OpenMP enalbed via homebrew, try $brew install gcc --without-multilib
 NVCC=nvcc
-CC=gcc
-MEX=mex
+CC=gcc-4.8
+MEX=/Applications/MATLAB_R2015b.app/bin/mex
 
 # NB. If using Matlab on another platform than Mac, please change the file extensions for Matlab to
 # the following MEX extension by platform:
@@ -49,7 +49,7 @@ $(libdir)/matched_filter_CPU.so: $(srcdir)/matched_filter.c
 
 # build for Matlab
 $(maindir)/matched_filter.$(mex_extension): $(srcdir)/matched_filter_mex.c $(srcdir)/matched_filter.c
-	$(MEX) COPTIMFLAGS="$(COPTIMFLAGS_MEX)" CFLAGS="$(CFLAGS_MEX)" LDFLAGS="$(LDFLAGS_MEX)" -output $@ $^
+	$(MEX) CC=$(CC) COPTIMFLAGS="$(COPTIMFLAGS_MEX)" CFLAGS="$(CFLAGS_MEX)" LDFLAGS="$(LDFLAGS_MEX)" -output $@ $^
 
 clean:
 	rm $(libdir)/*.so $(maindir)/*.mex*
