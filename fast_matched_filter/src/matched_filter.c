@@ -15,7 +15,7 @@
 
 //-------------------------------------------------------------------------
 void matched_filter(float *templates, float *sum_square_templates, int *moveouts,
-                    float *data, float *csum_square_data,
+                    float *data, double *csum_square_data,
                     float *weights, int step, int n_samples_template, int n_samples_data,
                     int n_templates, int n_stations, int n_components, int n_corr,
                     float *cc_sum) { // output variable
@@ -67,7 +67,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
  
 //-------------------------------------------------------------------------
 float network_corr(float *templates, float *sum_square_template, int *moveouts,
-                   float *data, float *csum_square_data, float *weights,
+                   float *data, double *csum_square_data, float *weights,
                    int n_samples_template, int n_samples_data, int n_stations, int n_components) {
 
     int s, c, d, dd, t;
@@ -102,14 +102,14 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
  
 //-------------------------------------------------------------------------
 float corrc(float *templates, float sum_square_template,
-            float *data, float *csum_square_data,
+            float *data, double *csum_square_data,
             int n_samples_template) {
 
     int i;
     float numerator = 0, sum_square_data;
     
     for (i = 0; i < n_samples_template; i++) numerator += templates[i] * data[i];
-    sum_square_data = csum_square_data[i] - csum_square_data[0]; // note i == n_samples_template
+    sum_square_data = (float)(csum_square_data[i] - csum_square_data[0]); // note i == n_samples_template
    
     return numerator / sqrtf(sum_square_template * sum_square_data);
 }

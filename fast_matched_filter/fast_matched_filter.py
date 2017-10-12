@@ -23,7 +23,7 @@ try:
         ct.POINTER(ct.c_float),    # sum of squares of templates
         ct.POINTER(ct.c_int),      # moveouts
         ct.POINTER(ct.c_float),    # data
-        ct.POINTER(ct.c_float),    # data csum squared
+        ct.POINTER(ct.c_double),    # data csum squared
         ct.POINTER(ct.c_float),    # weights
         ct.c_size_t,               # step
         ct.c_size_t,               # n_samples_template
@@ -121,7 +121,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
         # compute square of data
         csum_square_data = np.cumsum(np.insert(data, 0, 0, axis=-1) ** 2,
                                      axis=-1)
-        csum_square_data = np.float32(csum_square_data.flatten())
+        csum_square_data = np.float64(csum_square_data.flatten())
         data = np.float32(data.flatten())
 
         _libCPU.matched_filter(
@@ -129,7 +129,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
             sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
             data.ctypes.data_as(ct.POINTER(ct.c_float)),
-            csum_square_data.ctypes.data_as(ct.POINTER(ct.c_float)),
+            csum_square_data.ctypes.data_as(ct.POINTER(ct.c_double)),
             weights.ctypes.data_as(ct.POINTER(ct.c_float)),
             step,
             n_samples_template,
