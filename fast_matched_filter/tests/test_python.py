@@ -58,7 +58,7 @@ class TestFastMatchedFilter(unittest.TestCase):
                 print("Found NaN values for %s" % key)
             nan_status.update({key: status})
         for key in nan_status.keys():
-            self.assertFalse(nan_status.key)
+            self.assertFalse(nan_status[key])
 
     def test_within_bounds(self):
         """Check that correlations are between +/- 1"""
@@ -71,8 +71,8 @@ class TestFastMatchedFilter(unittest.TestCase):
             print("Min of data is: %f" % np.min(self.cccsums[key]))
             maxima.append(np.max(self.cccsums[key]))
             minima.append(np.min(self.cccsums[key]))
-        self.assertTrue(np.all(maxima <= 1.0))
-        self.assertTrue(np.all(minima >= -1.0))
+        self.assertTrue(np.all(np.array(maxima) <= 1.0))
+        self.assertTrue(np.all(np.array(minima) >= -1.0))
 
 
 if __name__ == '__main__':
