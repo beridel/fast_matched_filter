@@ -38,8 +38,9 @@ class TestFastMatchedFilter(unittest.TestCase):
             for arch in ['cpu', 'gpu']:
                 print("Trying to compute using the %s" % arch)
                 cccsums = matched_filter(
-                    dataset['templates'], weights, dataset['pads'],
-                    dataset['data'], step=1, arch=arch)
+                    templates=dataset['templates'], weights=weights,
+                    moveouts=dataset['pads'], data=dataset['data'],
+                    step=1, arch=arch)
                 if cccsums is None:
                     # This should only happen if something isn't compiled
                     print("Cannot test for architecture %s" % arch)
