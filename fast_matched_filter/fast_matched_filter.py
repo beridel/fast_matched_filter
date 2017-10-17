@@ -176,7 +176,7 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     moveouts = np.zeros((n_templates, n_stations))
     for t in range(n_templates):
         for s in range(n_stations):
-            moveouts[t, :] = (np.random.random_sample(n_components)
+            moveouts[t, s, :] = (np.random.random_sample(n_components)
                               * (max_moveout - min_moveout)) + min_moveout
     moveouts = np.round(moveouts * sampling_rate)
 
