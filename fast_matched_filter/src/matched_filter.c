@@ -15,12 +15,12 @@
 
 //-------------------------------------------------------------------------
 void matched_filter(float *templates, float *sum_square_templates, int *moveouts,
-                    float *data, float *csum_square_data,
+                    float *data, double *csum_square_data,
                     float *weights, int step, int n_samples_template, int n_samples_data,
                     int n_templates, int n_stations, int n_components, int n_corr,
                     float *cc_sum) { // output variable
 
-    int t, s, i;
+    int t, ch, i;
     int start_i, stop_i, cc_i;
     int min_moveout, max_moveout;
     int network_offset, station_offset, cc_sum_offset;
@@ -36,13 +36,13 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
         // find min/max moveout and template vector position
         min_moveout = 0;
         max_moveout = 0;
-        for (s = 0; s < n_stations; s++) {
-            if (moveouts[station_offset + s] < min_moveout) min_moveout = moveouts[station_offset + s];
-            if (moveouts[station_offset + s] > max_moveout) max_moveout = moveouts[station_offset + s];
+        for (ch = 0; ch < (n_stations * n_components); ch++) {
+            if (moveouts[network_offset + ch] < min_moveout) min_moveout = moveouts[network_offset + ch];
+            if (moveouts[network_offset + ch] > max_moveout) max_moveout = moveouts[network_offset + ch];
         }
     
         templates_t = templates + network_offset * n_samples_template;
-        moveouts_t = moveouts + station_offset;
+        moveouts_t = moveouts + network_offset;
         sum_square_templates_t = sum_square_templates + network_offset;
 
         start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
@@ -67,7 +67,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
  
 //-------------------------------------------------------------------------
 float network_corr(float *templates, float *sum_square_template, int *moveouts,
-                   float *data, float *csum_square_data, float *weights,
+                   float *data, double *csum_square_data, float *weights,
                    int n_samples_template, int n_samples_data, int n_stations, int n_components) {
 
     int s, c, d, dd, t;
@@ -75,17 +75,17 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
     float cc, cc_sum = 0; // output
  
     for (s = 0; s < n_stations; s++) {
-        if (weights[s] == 0) continue;
         
         station_offset = s * n_components;
 
         cc = 0;        
         for (c = 0; c < n_components; c++) {
             component_offset = station_offset + c;
+            if (weights[component_offset] == 0) continue;
 
             t = component_offset * n_samples_template;
-            d = component_offset * n_samples_data + moveouts[s];
-            dd = component_offset * (n_samples_data + 1) + moveouts[s]; // take into account added leading zero
+            d = component_offset * n_samples_data + moveouts[component_offset];
+            dd = component_offset * (n_samples_data + 1) + moveouts[component_offset]; // take into account added leading zero
 
             
             cc += corrc(templates + t,
@@ -93,8 +93,8 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
                         data + d,
                         csum_square_data + dd,
                         n_samples_template);
+            cc_sum += cc * weights[component_offset];
         }
-        cc_sum += cc / n_components * weights[s];
     }
     
     return cc_sum;
@@ -102,14 +102,14 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
  
 //-------------------------------------------------------------------------
 float corrc(float *templates, float sum_square_template,
-            float *data, float *csum_square_data,
+            float *data, double *csum_square_data,
             int n_samples_template) {
 
     int i;
     float numerator = 0, sum_square_data;
     
     for (i = 0; i < n_samples_template; i++) numerator += templates[i] * data[i];
-    sum_square_data = csum_square_data[i] - csum_square_data[0]; // note i == n_samples_template
+    sum_square_data = (float)(csum_square_data[i] - csum_square_data[0]); // note i == n_samples_template
    
     return numerator / sqrtf(sum_square_template * sum_square_data);
 }
