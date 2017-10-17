@@ -173,7 +173,7 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
     min_moveout = 0
     max_moveout = 10
-    moveouts = np.zeros((n_templates, n_stations))
+    moveouts = np.zeros((n_templates, n_stations, n_components))
     for t in range(n_templates):
         for s in range(n_stations):
             moveouts[t, s, :] = (np.random.random_sample(n_components)
