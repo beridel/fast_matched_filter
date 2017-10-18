@@ -23,7 +23,7 @@ try:
         ct.POINTER(ct.c_float),    # sum of squares of templates
         ct.POINTER(ct.c_int),      # moveouts
         ct.POINTER(ct.c_float),    # data
-        ct.POINTER(ct.c_float),    # data csum squared
+        ct.POINTER(ct.c_double),    # data csum squared
         ct.POINTER(ct.c_float),    # weights
         ct.c_size_t,               # step
         ct.c_size_t,               # n_samples_template
@@ -67,8 +67,8 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     input:
     templates ---------- 4D numpy array [templates x stations x
                          components x time]
-    moveouts ----------- 2D numpy array [templates x stations]
-    weights ------------ 2D numpy array [templates x stations]
+    moveouts ----------- 3D numpy array [templates x stations x components]
+    weights ------------ 3D numpy array [templates x stations x components]
     data --------------- 3D numpy array [stations x components x
                          time]
     step --------------- interval between correlations (in samples)
@@ -121,7 +121,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
         # compute square of data
         csum_square_data = np.cumsum(np.insert(data, 0, 0, axis=-1) ** 2,
                                      axis=-1)
-        csum_square_data = np.float32(csum_square_data.flatten())
+        csum_square_data = np.float64(csum_square_data.flatten())
         data = np.float32(data.flatten())
 
         _libCPU.matched_filter(
@@ -129,7 +129,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
             sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
             data.ctypes.data_as(ct.POINTER(ct.c_float)),
-            csum_square_data.ctypes.data_as(ct.POINTER(ct.c_float)),
+            csum_square_data.ctypes.data_as(ct.POINTER(ct.c_double)),
             weights.ctypes.data_as(ct.POINTER(ct.c_float)),
             step,
             n_samples_template,
@@ -173,10 +173,11 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
     min_moveout = 0
     max_moveout = 10
-    moveouts = np.zeros((n_templates, n_stations))
+    moveouts = np.zeros((n_templates, n_stations, n_components))
     for t in range(n_templates):
-        moveouts[t, :] = (np.random.random_sample(n_stations)
-                          * (max_moveout - min_moveout)) + min_moveout
+        for s in range(n_stations):
+            moveouts[t, s, :] = (np.random.random_sample(n_components)
+                              * (max_moveout - min_moveout)) + min_moveout
     moveouts = np.round(moveouts * sampling_rate)
 
     # generate data
@@ -198,13 +199,14 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
         template = np.zeros((n_stations, n_components, n_samples_template))
         for s in range(n_stations):
-            start = int(start_t + np.round(moveouts[t, s]))
-            stop = int(start_t + n_samples_template + np.round(moveouts[t, s]))
-            template[s, :, :n_samples_template] = data[s, :, start:stop]
+            for c in range(n_components):
+                start = int(start_t + np.round(moveouts[t, s, c]))
+                stop = int(start_t + n_samples_template + np.round(moveouts[t, s, c]))
+                template[s, c, :n_samples_template] = data[s, c, start:stop]
 
         templates[t, :, :, :n_samples_template] = template
 
-    weights = np.ones((n_templates, n_stations)) / n_stations
+    weights = np.ones((n_templates, n_stations, n_components)) / (n_stations * n_components)
 
     start_time = dt.datetime.now()
     cc_sum = matched_filter(templates,
