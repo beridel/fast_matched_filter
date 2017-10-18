@@ -19,17 +19,16 @@ template_duration = 10;
 data_duration = 86400;
 step = 1;
 
-%% define templates
-template_start_times = round(rand(1, n_templates) * data_duration / 2) + 1; % determines the time (in seconds) within the data to extract a template
-moveouts = zeros(n_stations, n_templates); % in seconds
+% determines the time (in seconds) within the data to extract a template
+template_start_times = round(rand(1, n_templates) * data_duration / 2) + 1;
 
-min_moveout = 0
-max_moveout = 10
-moveouts = zeros(n_stations, n_templates)
+min_moveout = 0;
+max_moveout = 10;
+moveouts = zeros(n_stations, n_templates);
 for t = 1:n_templates
-    moveouts(:,t) = rand(n_stations, 1) * (max_moveout - min_moveout) + min_moveout
+    moveouts(:,t) = rand(n_stations, 1) * (max_moveout - min_moveout) + min_moveout;
 end
-moveouts = round(moveouts * sampling_rate)
+moveouts = round(moveouts * sampling_rate);
 
 %% generate random data
 n_samples_data = data_duration * sampling_rate;
