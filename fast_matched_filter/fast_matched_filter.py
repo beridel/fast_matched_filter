@@ -199,9 +199,10 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
         template = np.zeros((n_stations, n_components, n_samples_template))
         for s in range(n_stations):
-            start = int(start_t + np.round(moveouts[t, s]))
-            stop = int(start_t + n_samples_template + np.round(moveouts[t, s]))
-            template[s, :, :n_samples_template] = data[s, :, start:stop]
+            for c in range(n_components):
+                start = int(start_t + np.round(moveouts[t, s, c]))
+                stop = int(start_t + n_samples_template + np.round(moveouts[t, s, c]))
+                template[s, c, :n_samples_template] = data[s, c, start:stop]
 
         templates[t, :, :, :n_samples_template] = template
 
