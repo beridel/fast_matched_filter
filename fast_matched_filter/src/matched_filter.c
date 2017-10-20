@@ -25,7 +25,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
     int min_moveout, max_moveout;
     int network_offset, station_offset, cc_sum_offset;
     int *moveouts_t = NULL;
-    float *templates_t = NULL, *sum_square_templates_t = NULL;
+    float *templates_t = NULL, *sum_square_templates_t = NULL, *weights_t = NULL;
 
     // run matched filter template by template
     for (t = 0; t < n_templates; t++) {
@@ -43,6 +43,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
     
         templates_t = templates + network_offset * n_samples_template;
         moveouts_t = moveouts + network_offset;
+        weights_t = weights + network_offset;
         sum_square_templates_t = sum_square_templates + network_offset;
 
         start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
@@ -56,7 +57,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
                                                         moveouts_t,
                                                         data + i,
                                                         csum_square_data + i,
-                                                        weights,
+                                                        weights_t,
                                                         n_samples_template,
                                                         n_samples_data,
                                                         n_stations,
@@ -106,11 +107,13 @@ float corrc(float *templates, float sum_square_template,
             int n_samples_template) {
 
     int i;
-    float numerator = 0, sum_square_data;
+    float numerator = 0, denominator = 0, sum_square_data, cc = 0;
     
     for (i = 0; i < n_samples_template; i++) numerator += templates[i] * data[i];
     sum_square_data = (float)(csum_square_data[i] - csum_square_data[0]); // note i == n_samples_template
-   
-    return numerator / sqrtf(sum_square_template * sum_square_data);
+    denominator = sum_square_template * sum_square_data;
+    if (denominator > 0.00001) cc = numerator / sqrt(denominator);
+
+    return cc;
 }
 

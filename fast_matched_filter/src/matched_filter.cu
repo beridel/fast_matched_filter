@@ -31,7 +31,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 //-------------------------------------------------------------------------
-__global__ void network_corr(float *templates, float *sum_square_template, int *moveout, float *data,
+__global__ void network_corr(float *templates, float *sum_square_template, int *moveout, float *data, float *weights,
                              size_t step, size_t n_samples_template, size_t n_samples_data,
                              size_t n_stations, size_t n_components,
                              int chunk_offset, int chunk_size,
@@ -41,7 +41,7 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
     int idx, first_sample_block, first_sample_trace, last_sample_trace; // sample's index
     int i, s, c; // counters
     int data_offset, templates_offset, sum_square_template_offset, cc_mat_offset;
-    float numerator, sum_square_data;
+    float numerator, denominator, sum_square_data;
     float data_sample;
     int t_idx;
 
@@ -57,47 +57,49 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
     s = idx % n_stations;
 
     for (c = 0; c < n_components; c++){
-        // compute offsets for input variables
-        cc_mat_offset = (first_sample_block / step + threadIdx.x - chunk_offset) * n_stations * n_components + s * n_components + c;
-        templates_offset = s * n_samples_template * n_components + c * n_samples_template;
-        sum_square_template_offset = s * n_components + c;
-        first_sample_trace = first_sample_block + moveout[s * n_components + c];
-        last_sample_trace = first_sample_trace + n_samples_template + threadIdx.x * step;
-        data_offset = s * n_samples_data * n_components + c * n_samples_data + first_sample_trace;
+        if (weights[s * n_components + c] != 0.){
+            // compute offsets for input variables
+            cc_mat_offset = (first_sample_block / step + threadIdx.x - chunk_offset) * n_stations * n_components + s * n_components + c;
+            templates_offset = s * n_samples_template * n_components + c * n_samples_template;
+            sum_square_template_offset = s * n_components + c;
+            first_sample_trace = first_sample_block + moveout[s * n_components + c];
+            last_sample_trace = first_sample_trace + n_samples_template + threadIdx.x * step;
+            data_offset = s * n_samples_data * n_components + c * n_samples_data + first_sample_trace;
 
-        // initialize sums
-        sum_square_data = 0.0f;
-        numerator = 0.0f;
+            // initialize sums
+            sum_square_data = 0.0f;
+            numerator = 0.0f;
 
-        // load template and data into shared memory
-        t_idx = threadIdx.x;
-        while(t_idx < n_samples_template) {
-            templates_s[t_idx] = templates[templates_offset + t_idx];
-            if ((first_sample_trace + t_idx) < n_samples_data) data_s[t_idx] = data[data_offset + t_idx];
-            t_idx += blockDim.x;
-        }
-        while(t_idx < (blockDim.x * step + n_samples_template)){
-            if ((first_sample_trace + t_idx) < n_samples_data) data_s[t_idx] = data[data_offset + t_idx];
-            t_idx += blockDim.x;
-        }
-
-        __syncthreads(); // make sure the waveforms are read before keep going
-
-        // calculate correlation coefficient
-        if (last_sample_trace < n_samples_data){
-            // if not, corresponds to an ill-defined CC with some samples out of the bounds
-            for(i = 0; i < n_samples_template; i++) {
-                data_sample = data_s[i + threadIdx.x * step];
-                numerator += data_sample * templates_s[i];
-                sum_square_data += data_sample * data_sample; 
+            // load template and data into shared memory
+            t_idx = threadIdx.x;
+            while(t_idx < n_samples_template) {
+                templates_s[t_idx] = templates[templates_offset + t_idx];
+                if ((first_sample_trace + t_idx) < n_samples_data) data_s[t_idx] = data[data_offset + t_idx];
+                t_idx += blockDim.x;
+            }
+            while(t_idx < (blockDim.x * step + n_samples_template)){
+                if ((first_sample_trace + t_idx) < n_samples_data) data_s[t_idx] = data[data_offset + t_idx];
+                t_idx += blockDim.x;
             }
 
-            if (cc_mat_offset < (chunk_size * n_stations * n_components)){
-                // check that this thread is not ouf of the chunk's bounds
-                cc_mat[cc_mat_offset] = numerator * rsqrtf(sum_square_data * sum_square_template[sum_square_template_offset]);
+            __syncthreads(); // make sure the waveforms are read before keep going
+
+            // calculate correlation coefficient
+            if (last_sample_trace < n_samples_data){
+                // if not, corresponds to an ill-defined CC with some samples out of the bounds
+                for(i = 0; i < n_samples_template; i++) {
+                    data_sample = data_s[i + threadIdx.x * step];
+                    numerator += data_sample * templates_s[i];
+                    sum_square_data += data_sample * data_sample; 
+                }
+                denominator = sum_square_data * sum_square_template[sum_square_template_offset];
+                if (cc_mat_offset < (chunk_size * n_stations * n_components)){
+                    // check that this thread is not ouf of the chunk's bounds
+                    if (denominator > 0.00001) cc_mat[cc_mat_offset] = numerator * rsqrtf(sum_square_data * sum_square_template[sum_square_template_offset]);
+                }
             }
+            __syncthreads(); // wait for every thread to finish before leaving the kernel
         }
-        __syncthreads(); // wait for every thread to finish before leaving the kernel
     }
 }
 
@@ -265,6 +267,7 @@ void matched_filter(float *templates, float *sum_square_templates,
                                                     sum_square_templates_d_t, 
                                                     moveouts_d_t, 
                                                     data_d,
+                                                    weights_d_t,
                                                     step, 
                                                     n_samples_template,
                                                     n_samples_data, 

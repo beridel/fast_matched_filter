@@ -120,8 +120,8 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     if arch == 'cpu':
         # compute square of data
         csum_square_data = np.cumsum(np.insert(data, 0, 0, axis=-1) ** 2,
-                                     axis=-1)
-        csum_square_data = np.float64(csum_square_data.flatten())
+                                     axis=-1, dtype=np.float64)
+        csum_square_data = csum_square_data.flatten()
         data = np.float32(data.flatten())
 
         _libCPU.matched_filter(
