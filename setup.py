@@ -67,6 +67,7 @@ setup(name='FastMatchedFilter',
       license='GPL',
       packages=['fast_matched_filter'],
       install_requires=['numpy'],
+      tests_require=['pytest>=2.0.0'],
       include_package_data=True,
       zip_safe=False,
       cmdclass={

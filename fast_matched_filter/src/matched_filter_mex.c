@@ -15,7 +15,8 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
 {
     float *templates = NULL, *sum_square_templates = NULL; // template input
     int *moveouts = NULL, max_moveout = 0; // template moveout
-    float *data = NULL, *csum_square_data = NULL; // data input
+    float *data = NULL; // data input
+    double *csum_square_data = NULL; // data input
     float *weights = NULL; // weights for each CC
     int n_samples_template, n_samples_data, step;
     int n_templates, n_stations, n_components, n_corr; // size input
@@ -49,7 +50,7 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     sum_square_templates = (float*)mxGetData(ptrInputs[1]);
     moveouts = (int*)mxGetData(ptrInputs[2]);
     data = (float*)mxGetData(ptrInputs[3]);
-    csum_square_data = (float*)mxGetData(ptrInputs[4]);
+    csum_square_data = (double*)mxGetData(ptrInputs[4]);
     weights = (float*)mxGetData(ptrInputs[5]);
     step = (int)mxGetScalar(ptrInputs[6]);
     n_samples_template = (int)mxGetScalar(ptrInputs[7]);
