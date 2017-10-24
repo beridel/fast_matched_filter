@@ -23,7 +23,7 @@ try:
         ct.POINTER(ct.c_float),    # sum of squares of templates
         ct.POINTER(ct.c_int),      # moveouts
         ct.POINTER(ct.c_float),    # data
-        ct.POINTER(ct.c_double),    # data csum squared
+        ct.POINTER(ct.c_float),    # data csum squared
         ct.POINTER(ct.c_float),    # weights
         ct.c_size_t,               # step
         ct.c_size_t,               # n_samples_template
@@ -110,6 +110,15 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
 
     templates = np.float32(templates.flatten())
     sum_square_templates = np.float32(sum_square_templates.flatten())
+
+    # check shapes
+    expected_size = n_templates * n_stations * n_components
+    if expected_size/moveouts.size == n_components:
+        # moveouts are specified per station
+        moveouts = np.repeat(moveouts, n_components).reshape(n_templates, n_stations, n_components)
+    if expected_size/weights.size == n_components:
+        # weights are specified per station
+        weights = np.repeat(weights, n_components).reshape(n_templates, n_stations, n_components)
     moveouts = np.int32(moveouts.flatten())
     weights = np.float32(weights.flatten())
     step = np.int32(step)
@@ -119,9 +128,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
 
     if arch == 'cpu':
         # compute square of data
-        csum_square_data = np.cumsum(np.insert(data, 0, 0, axis=-1) ** 2,
-                                     axis=-1, dtype=np.float64)
-        csum_square_data = csum_square_data.flatten()
+        csum_square_data = np.zeros(n_stations * n_components * n_samples_data, dtype=np.float32)
         data = np.float32(data.flatten())
 
         _libCPU.matched_filter(
@@ -129,7 +136,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
             sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
             data.ctypes.data_as(ct.POINTER(ct.c_float)),
-            csum_square_data.ctypes.data_as(ct.POINTER(ct.c_double)),
+            csum_square_data.ctypes.data_as(ct.POINTER(ct.c_float)),
             weights.ctypes.data_as(ct.POINTER(ct.c_float)),
             step,
             n_samples_template,

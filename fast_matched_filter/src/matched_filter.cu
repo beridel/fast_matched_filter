@@ -54,7 +54,7 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
     // 1 block processes one channel to blockDim.x / step different positions in time
     idx = blockIdx.x * blockDim.x + chunk_offset * n_stations;
     first_sample_block = idx / n_stations * step;
-    s = idx % n_stations;
+    s = blockIdx.x % n_stations;
 
     for (c = 0; c < n_components; c++){
         if (weights[s * n_components + c] != 0.){
