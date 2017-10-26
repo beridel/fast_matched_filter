@@ -6,9 +6,9 @@ libdir=$(maindir)/lib
 # NB. If using Matlab on Mac, you MUST configure your mexopts.sh file to use an OpenMP-friendly
 # compiler (like gcc)! The default clang compiler is not OpenMP-friendly. To easily install gcc
 # with OpenMP enalbed via homebrew, try $brew install gcc --without-multilib
-NVCC=nvcc
 CC=gcc
-MEX=/Applications/MATLAB_R2015b.app/bin/mex
+NVCC=nvcc
+MEX=mex
 
 # NB. If using Matlab on another platform than Mac, please change the file extensions for Matlab to
 # the following MEX extension by platform:
@@ -31,6 +31,7 @@ LDFLAGS_GPU=--shared
 
 # CPU FLAGS
 COPTIMFLAGS_CPU=-O3
+# -march=native can cause problems on some CPUs; remove if needed
 CFLAGS_CPU=-fopenmp -fPIC -ftree-vectorize -march=native
 LDFLAGS_CPU=-shared
 

@@ -9,7 +9,6 @@ import numpy as np
 
 from fast_matched_filter import (matched_filter, CPU_LOADED, GPU_LOADED)
 
-
 class TestFastMatchedFilter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -49,7 +48,6 @@ class TestFastMatchedFilter(unittest.TestCase):
                     continue
                 else:
                     cls.cccsums.update({name + '_' + arch: cccsum})
-
     def test_no_nans(self):
         """Check that no strange values exist cross-correlations"""
         nan_status = {}
@@ -83,7 +81,6 @@ class TestFastMatchedFilter(unittest.TestCase):
             self.assertTrue(np.allclose(
                 self.cccsums[dataset + '_gpu'], self.cccsums[dataset + '_cpu'],
                 atol=0.0001))
-
 
 
 if __name__ == '__main__':
