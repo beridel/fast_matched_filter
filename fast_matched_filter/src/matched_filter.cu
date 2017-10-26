@@ -52,8 +52,8 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
     float *data_s = &shared[count_template];
 
     // 1 block processes one channel to blockDim.x / step different positions in time
-    idx = blockIdx.x * blockDim.x + chunk_offset * n_stations;
-    first_sample_block = idx / n_stations * step;
+    idx = blockIdx.x/n_stations * blockDim.x + chunk_offset;
+    first_sample_block = idx * step;
     s = blockIdx.x % n_stations;
 
     for (c = 0; c < n_components; c++){
@@ -98,8 +98,8 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
                     if (denominator > 0.00001) cc_mat[cc_mat_offset] = numerator * rsqrtf(sum_square_data * sum_square_template[sum_square_template_offset]);
                 }
             }
-            __syncthreads(); // wait for every thread to finish before leaving the kernel
         }
+        __syncthreads(); // wait for every thread to finish before leaving the kernel
     }
 }
 
@@ -259,7 +259,7 @@ void matched_filter(float *templates, float *sum_square_templates,
 
                 // define block and grid sizes for kernels
                 dim3 BS(BLOCKSIZE);
-                dim3 GS(ceilf((cs * n_stations) / (float)BS.x));
+                dim3 GS(ceilf(cs / (float)BS.x) * n_stations);
 
                 // process
                 cudaMemset(cc_mat_d, 0, sizeof_cc_mat); // initialize cc_mat to 0
@@ -294,7 +294,6 @@ void matched_filter(float *templates, float *sum_square_templates,
                 // xfer cc_sum back to host
                 cc_sums_t = cc_sums + t_thread * n_corr + chunk_offset;
                 cudaMemcpy(cc_sums_t, cc_sum_d, sizeof_cc_sum_chunk, cudaMemcpyDeviceToHost);
-
             }
             cudaDeviceSynchronize();
         } // while

@@ -33,6 +33,14 @@ try:
         ct.c_size_t,               # n_components
         ct.c_size_t,               # n_corr
         ct.POINTER(ct.c_float)]    # cc_sums
+    _libCPU.csum.argtypes = [
+            ct.POINTER(ct.c_double),
+            ct.c_int,
+            ct.c_int,
+            ct.c_int,
+            ct.c_int,
+            ct.POINTER(ct.c_double)]
+
     cpu_loaded = True
 except OSError:
     print("Matched-filter CPU is not compiled! Should be here: {}".
@@ -91,7 +99,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     if not loaded:
         print("Compiled library for {} not loaded; exiting!".format(arch))
         return
-
+    import matplotlib.pyplot as plt
     n_templates = np.int32(templates.shape[0])
     n_stations = np.int32(data.shape[0])
     n_components = np.int32(data.shape[1])
@@ -101,7 +109,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
 
     # compute sum of squares for templates
     sum_square_templates = np.zeros((n_templates, n_stations, n_components),
-                                    dtype=np.float32)
+                                        dtype=np.float32)
     for t in range(n_templates):
         for s in range(n_stations):
             for c in range(n_components):
@@ -124,12 +132,19 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     step = np.int32(step)
     # Note: shouldn't need to enforce int here because they were np.int32
     # before
-    cc_sums = np.zeros(int(n_templates) * int(n_corr), dtype=np.float32)
 
     if arch == 'cpu':
-        # compute square of data
-        csum_square_data = np.zeros(n_stations * n_components * n_samples_data, dtype=np.float32)
+        csum_square_data = np.zeros(n_stations * n_components * n_samples_data, dtype=np.float64)
+        data64 = np.power(np.float64(data.flatten()), 2)
+        _libCPU.csum(data64.ctypes.data_as(ct.POINTER(ct.c_double)), 
+                            n_samples_template, 
+                            n_samples_data,
+                            n_stations,
+                            n_components,
+                            csum_square_data.ctypes.data_as(ct.POINTER(ct.c_double)))
+        csum_square_data = np.float32(csum_square_data.flatten())
         data = np.float32(data.flatten())
+        cc_sums = np.zeros(int(n_templates) * int(n_corr), dtype=np.float32)
 
         _libCPU.matched_filter(
             templates.ctypes.data_as(ct.POINTER(ct.c_float)),
@@ -145,11 +160,11 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
             n_stations,
             n_components,
             n_corr,
-            cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
+           cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
 
     elif arch == 'gpu':
         data = np.float32(data.flatten())
-
+        cc_sums = np.zeros(int(n_templates) * int(n_corr), dtype=np.float32)
         _libGPU.matched_filter(
                 templates.ctypes.data_as(ct.POINTER(ct.c_float)),
                 sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
@@ -230,3 +245,19 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                  step, (stop_time - start_time).total_seconds()))
 
     return templates, moveouts, data, step, cc_sum
+
+def csum(data, ntemp, ndata):
+    """
+    """
+    n_stations = data.shape[0]
+    n_components = data.shape[1]
+    csum = np.zeros( (n_stations , n_components , ndata), dtype=np.float32)
+    for s in range(n_stations):
+        for c in range(n_components):
+            csum_square_data = np.zeros(ndata, dtype=np.float32)
+            _libCPU_SIMPLE.csum(data[s,c,:].ctypes.data_as(ct.POINTER(ct.c_float)), 
+                                np.int32(ntemp), 
+                                np.int32(ndata), 
+                                csum_square_data.ctypes.data_as(ct.POINTER(ct.c_float)))
+            csum[s,c,:] = csum_square_data
+    return csum

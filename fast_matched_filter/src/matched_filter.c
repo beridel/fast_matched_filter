@@ -27,17 +27,6 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
     int *moveouts_t = NULL;
     float *templates_t = NULL, *sum_square_templates_t = NULL, *weights_t = NULL;
 
-#pragma omp parallel for private(ch) \
-shared(csum_square_data, data)
-    // compute the cumulative sum
-    for (ch = 0; ch < (n_stations*n_components); ch++){
-        float *csum_ch = NULL, *data_ch = NULL;
-        csum_ch = csum_square_data + ch * n_samples_data;
-        data_ch = data + ch * n_samples_data;
-        csum(data_ch, n_samples_template, n_samples_data,
-             csum_ch);
-    }
-
     // run matched filter template by template
     for (t = 0; t < n_templates; t++) {
         network_offset = t * n_stations * n_components;
@@ -118,23 +107,31 @@ float corrc(float *templates, float sum_square_template,
     int i;
     float numerator = 0, denominator = 0, cc = 0;
     
-    for (i = 0; i < n_samples_template; i++) numerator += templates[i] * data[i];
-
+    for (i = 0; i < n_samples_template; i++){
+        numerator += templates[i] * data[i];
+    }
     denominator = sum_square_template * csum_square_data[0];
+    //denominator = sum_square_template * denominator;
     if (denominator > 0.00001) cc = numerator / sqrt(denominator);
-    //cc = numerator / sqrt(denominator);
 
     return cc;
 }
 
-void csum(float *data, int n_samples_template, int n_samples_data,
-          float *cumsum) {
+void csum(double *data_sq, int n_samples_template, int n_samples_data,
+          int n_stations, int n_components,
+          double *csum_square_data) {
 
-    int i, n;
-    // initialization
-    for (i = 0; i < n_samples_template; i++) cumsum[0] += pow(data[i], 2);
-    // sliding cumulative sum
-    for (n = 1; n < n_samples_data-n_samples_template; n++){
-        cumsum[n] = cumsum[n-1] - pow(data[n-1], 2) + pow(data[n+n_samples_template-1], 2);
+    int ch, i, n;
+    for (ch = 0; ch < (n_stations*n_components); ch++){
+        double *csum_ch = NULL, *data_sq_ch = NULL;
+        csum_ch = csum_square_data + ch * n_samples_data;
+        data_sq_ch = data_sq + ch * n_samples_data;
+
+        // sliding cumulative sum
+#pragma omp parallel for private(ch, i, n) shared(data_sq_ch, csum_ch)
+        for (n = 0; n < n_samples_data-n_samples_template; n++){
+            for (i = 0; i < n_samples_template; i++) csum_ch[n] += data_sq_ch[n+i];
+        }
     }
 }
+
