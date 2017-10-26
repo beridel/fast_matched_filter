@@ -15,6 +15,8 @@ import os
 
 
 path = os.path.join(os.path.dirname(__file__), 'lib')
+CPU_LOADED = False
+GPU_LOADED = False
 
 try:
     _libCPU = ct.cdll.LoadLibrary(os.path.join(path, 'matched_filter_CPU.so'))
@@ -41,11 +43,11 @@ try:
             ct.c_int,
             ct.POINTER(ct.c_double)]
 
-    cpu_loaded = True
+    CPU_LOADED = True
 except OSError:
     print("Matched-filter CPU is not compiled! Should be here: {}".
           format(os.path.join(path, 'matched_filter_CPU.so')))
-    cpu_loaded = False
+    CPU_LOADED = False
 
 try:
     _libGPU = ct.cdll.LoadLibrary(os.path.join(path, 'matched_filter_GPU.so'))
@@ -63,11 +65,11 @@ try:
         ct.c_size_t,               # n_components
         ct.c_size_t,               # n_corr
         ct.POINTER(ct.c_float)]    # cc_sums
-    gpu_loaded = True
+    GPU_LOADED = True
 except OSError:
     print("Matched-filter GPU is not compiled! Should be here: {}".
           format(os.path.join(path, 'matched_filter_GPU.so')))
-    gpu_loaded = False
+    GPU_LOADED = False
 
 
 def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
@@ -89,9 +91,9 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     2D numpy array (np.float32) [templates x time (at step defined interval)]
     """
 
-    if arch.lower() == 'cpu' and cpu_loaded is False:
+    if arch.lower() == 'cpu' and CPU_LOADED is False:
         loaded = False
-    elif arch.lower() == 'gpu' and gpu_loaded is False:
+    elif arch.lower() == 'gpu' and GPU_LOADED is False:
         loaded = False
     else:
         loaded = True
@@ -99,7 +101,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     if not loaded:
         print("Compiled library for {} not loaded; exiting!".format(arch))
         return
-    import matplotlib.pyplot as plt
+
     n_templates = np.int32(templates.shape[0])
     n_stations = np.int32(data.shape[0])
     n_components = np.int32(data.shape[1])
@@ -135,13 +137,14 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
 
     if arch == 'cpu':
         csum_square_data = np.zeros(n_stations * n_components * n_samples_data, dtype=np.float64)
-        data64 = np.power(np.float64(data.flatten()), 2)
-        _libCPU.csum(data64.ctypes.data_as(ct.POINTER(ct.c_double)), 
+        data64_sq = np.power(np.float64(data.flatten()), 2)
+        _libCPU.csum(data64_sq.ctypes.data_as(ct.POINTER(ct.c_double)), 
                             n_samples_template, 
                             n_samples_data,
                             n_stations,
                             n_components,
                             csum_square_data.ctypes.data_as(ct.POINTER(ct.c_double)))
+        del data64_sq
         csum_square_data = np.float32(csum_square_data.flatten())
         data = np.float32(data.flatten())
         cc_sums = np.zeros(int(n_templates) * int(n_corr), dtype=np.float32)

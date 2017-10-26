@@ -4,9 +4,10 @@ Basic tests for the FastMatchedFilter package.
 
 import unittest
 import os
+import pytest
 import numpy as np
 
-from fast_matched_filter import matched_filter
+from fast_matched_filter import (matched_filter, CPU_LOADED, GPU_LOADED)
 
 
 class TestFastMatchedFilter(unittest.TestCase):
@@ -29,24 +30,25 @@ class TestFastMatchedFilter(unittest.TestCase):
                 cls.test_path, 'noisy_template.npy')),
             'pads': np.load(os.path.join(
                 cls.test_path, 'noisy_pads.npy'))}
+        cls.datasets = ['noisy', 'kaik']
 
         cls.cccsums = {}
-        for dataset, name in zip([cls.kaik, cls.noisy], ['kaik', 'noisy']):
+        for dataset, name in zip([cls.kaik, cls.noisy], cls.datasets):
             print("\nComputing correlations for dataset %s" % name)
             weights = np.ones(
                 (len(dataset['templates']), len(dataset['data'])))
             for arch in ['cpu', 'gpu']:
                 print("Trying to compute using the %s" % arch)
-                cccsums = matched_filter(
+                cccsum = matched_filter(
                     templates=dataset['templates'], weights=weights,
                     moveouts=dataset['pads'], data=dataset['data'],
                     step=1, arch=arch)
-                if cccsums is None:
+                if cccsum is None:
                     # This should only happen if something isn't compiled
                     print("Cannot test for architecture %s" % arch)
                     continue
                 else:
-                    cls.cccsums.update({name + '_' + arch: cccsums})
+                    cls.cccsums.update({name + '_' + arch: cccsum})
 
     def test_no_nans(self):
         """Check that no strange values exist cross-correlations"""
@@ -73,6 +75,15 @@ class TestFastMatchedFilter(unittest.TestCase):
             minima.append(np.min(self.cccsums[key]))
         self.assertTrue(np.all(np.array(maxima) <= 1.0))
         self.assertTrue(np.all(np.array(minima) >= -1.0))
+
+    @pytest.mark.skipif(CPU_LOADED is False or GPU_LOADED is False,
+                        reason="Either CPU or GPU have not run")
+    def compare_results(self):
+        for dataset in self.datasets:
+            self.assertTrue(np.allclose(
+                self.cccsums[dataset + '_gpu'], self.cccsums[dataset + '_cpu'],
+                atol=0.0001))
+
 
 
 if __name__ == '__main__':
