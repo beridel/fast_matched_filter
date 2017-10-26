@@ -15,6 +15,8 @@ import os
 
 
 path = os.path.join(os.path.dirname(__file__), 'lib')
+CPU_LOADED = False
+GPU_LOADED = False
 
 try:
     _libCPU = ct.cdll.LoadLibrary(os.path.join(path, 'matched_filter_CPU.so'))
@@ -33,11 +35,11 @@ try:
         ct.c_size_t,               # n_components
         ct.c_size_t,               # n_corr
         ct.POINTER(ct.c_float)]    # cc_sums
-    cpu_loaded = True
+    CPU_LOADED = True
 except OSError:
     print("Matched-filter CPU is not compiled! Should be here: {}".
           format(os.path.join(path, 'matched_filter_CPU.so')))
-    cpu_loaded = False
+    CPU_LOADED = False
 
 try:
     _libGPU = ct.cdll.LoadLibrary(os.path.join(path, 'matched_filter_GPU.so'))
@@ -55,11 +57,11 @@ try:
         ct.c_size_t,               # n_components
         ct.c_size_t,               # n_corr
         ct.POINTER(ct.c_float)]    # cc_sums
-    gpu_loaded = True
+    GPU_LOADED = True
 except OSError:
     print("Matched-filter GPU is not compiled! Should be here: {}".
           format(os.path.join(path, 'matched_filter_GPU.so')))
-    gpu_loaded = False
+    GPU_LOADED = False
 
 
 def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
@@ -81,9 +83,9 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     2D numpy array (np.float32) [templates x time (at step defined interval)]
     """
 
-    if arch.lower() == 'cpu' and cpu_loaded is False:
+    if arch.lower() == 'cpu' and CPU_LOADED is False:
         loaded = False
-    elif arch.lower() == 'gpu' and gpu_loaded is False:
+    elif arch.lower() == 'gpu' and GPU_LOADED is False:
         loaded = False
     else:
         loaded = True
