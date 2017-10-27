@@ -36,6 +36,7 @@ class TestFastMatchedFilter(unittest.TestCase):
             print("\nComputing correlations for dataset %s" % name)
             weights = np.ones(
                 (len(dataset['templates']), len(dataset['data'])))
+            weights /= len(dataset['data'])
             for arch in ['cpu', 'gpu']:
                 print("Trying to compute using the %s" % arch)
                 cccsum = matched_filter(
