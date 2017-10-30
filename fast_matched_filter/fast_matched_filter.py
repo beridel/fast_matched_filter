@@ -187,7 +187,6 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     if zeros > 10:
         print("{} correlation computations were skipped. Can be caused by zeros in data, or too low amplitudes (try to increase the gain).".format(zeros))
     return cc_sums
-    #return cc_sums.reshape((n_templates, n_corr))
 
 
 def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
