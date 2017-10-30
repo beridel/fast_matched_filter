@@ -13,6 +13,8 @@
 #include <float.h>
 #include "matched_filter_CPU.h"
 
+#define STABILITY_THRESHOLD 0.000001f
+
 //-------------------------------------------------------------------------
 void matched_filter(float *templates, float *sum_square_templates, int *moveouts,
                     float *data, float *csum_square_data,
@@ -111,8 +113,8 @@ float corrc(float *templates, float sum_square_template,
         numerator += templates[i] * data[i];
     }
     denominator = sum_square_template * csum_square_data[0];
-    //denominator = sum_square_template * denominator;
-    if (denominator > 0.00001) cc = numerator / sqrt(denominator);
+
+    if (denominator > STABILITY_THRESHOLD) cc = numerator / sqrt(denominator);
 
     return cc;
 }

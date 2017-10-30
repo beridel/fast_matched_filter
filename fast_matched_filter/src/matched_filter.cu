@@ -16,6 +16,7 @@
 #define BLOCKSIZE 512
 #define WARPSIZE 32
 #define NCHUNKS 20
+#define STABILITY_THRESHOLD 0.000001f
 
 extern "C" { // needed for C-style symbols in shared object compiled by nvcc
 #include "matched_filter_GPU.h"
@@ -95,7 +96,7 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
                 denominator = sum_square_data * sum_square_template[sum_square_template_offset];
                 if (cc_mat_offset < (chunk_size * n_stations * n_components)){
                     // check that this thread is not ouf of the chunk's bounds
-                    if (denominator > 0.00001) cc_mat[cc_mat_offset] = numerator * rsqrtf(sum_square_data * sum_square_template[sum_square_template_offset]);
+                    if (denominator > STABILITY_THRESHOLD) cc_mat[cc_mat_offset] = numerator * rsqrtf(sum_square_data * sum_square_template[sum_square_template_offset]);
                 }
             }
         }
