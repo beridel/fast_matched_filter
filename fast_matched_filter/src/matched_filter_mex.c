@@ -16,7 +16,7 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     float *templates = NULL, *sum_square_templates = NULL; // template input
     int *moveouts = NULL, max_moveout = 0; // template moveout
     float *data = NULL; // data input
-    double *csum_square_data = NULL; // data input
+    float *csum_square_data = NULL; // data input
     float *weights = NULL; // weights for each CC
     int n_samples_template, n_samples_data, step;
     int n_templates, n_stations, n_components, n_corr; // size input
@@ -50,7 +50,7 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     sum_square_templates = (float*)mxGetData(ptrInputs[1]);
     moveouts = (int*)mxGetData(ptrInputs[2]);
     data = (float*)mxGetData(ptrInputs[3]);
-    csum_square_data = (double*)mxGetData(ptrInputs[4]);
+    csum_square_data = (float*)mxGetData(ptrInputs[4]);
     weights = (float*)mxGetData(ptrInputs[5]);
     step = (int)mxGetScalar(ptrInputs[6]);
     n_samples_template = (int)mxGetScalar(ptrInputs[7]);
@@ -82,3 +82,41 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
                    cc_sum); // output variable
 }
 
+void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray *ptrInputs[])
+{
+        double *data_sq = NULL; // squares of data
+        int n_samples_template, n_samples_data; // size inpute
+        int n_stations, n_components; // size input
+        double *csum_square_data; // ouput
+
+        /* check for good number of inputs/outputs */
+        if (nInputs != 5)
+            mexErrMsgIdAndTxt("Matlab:matched_filter.c", "Five inputs required: \
+                    data_sq (double*), \
+                    n_samples_template (int), \
+                    n_samples_data (int), \
+                    n_stations (int), \
+                    n_components (int)");
+
+        if (nOutputs != 1)
+            mexErrMsgIdAndTxt("Matlab:matched_filter.c",
+                    "One output required");
+
+        /* read in inputs */
+        data_sq = (double*)mxGetData(ptrInputs[0]);
+        n_samples_template = (int)mxGetData(ptrInputs[1]);
+        n_samples_data = (int)mxGetData(ptrInputs[2]);
+        n_stations = (int)mxGetData(ptrInputs[3]);
+        n_components = (int)mxGetData(ptrInputs[4]);
+
+        /* prepare outputs */
+        ptrOutputs[0] = mxCreateNumericArray(1, &(n_stations * n_components * n_samples_data), mxSINGLE_CLASS, mxREAL);
+        csum_square_data = (double*)mxGetData(ptrOutputs[0]);
+
+        csum(data_sq,
+             n_samples_template,
+             n_samples_data,
+             n_stations,
+             n_components,
+             csum_square_data); // output variable
+}
