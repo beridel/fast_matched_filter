@@ -8,7 +8,8 @@ init file for fast_matched_filter library
     (https://www.gnu.org/licenses/gpl-3.0.en.html)
 """
 
-from .fast_matched_filter import matched_filter, test_matched_filter
+from .fast_matched_filter import (
+    matched_filter, test_matched_filter, CPU_LOADED, GPU_LOADED)
 
 del fast_matched_filter
 

@@ -25,8 +25,14 @@ n_samples_data = size(data, 1);
 
 sum_square_templates = squeeze(sum(templates .^ 2, 1));
 
-csum_square_data = zeros(n_samples_data + 1, n_components, n_stations);
-csum_square_data(2:end,:,:) = cumsum(data .^ 2);
+%data_double_sq = double(data) .^ 2;
+%csum_square_data = csum(data_double_sq, ...
+%                        n_samples_template, ...
+%                        n_samples_data, ...
+%                        n_stations, ...
+%                        n_components);
+%csum_square_data = single(csum_square_data);
+%clear data_double_sq;
 
 n_corr = floor((n_samples_data - n_samples_template - max(moveouts(:))) / step);
 
@@ -51,7 +57,6 @@ templates = single(templates(:));
 sum_square_templates = single(sum_square_templates(:));
 moveouts = int32(moveouts(:));
 data = single(data(:));
-csum_square_data = double(csum_square_data(:));
 weights = single(weights(:));
 step = int32(step);
 n_samples_template = int32(n_samples_template);
@@ -65,7 +70,6 @@ cc_sum = matched_filter(templates, ...
                         sum_square_templates, ...
                         moveouts, ...
                         data, ...
-                        csum_square_data, ...
                         weights, ...
                         step, ...
                         n_samples_template, ...
@@ -76,5 +80,10 @@ cc_sum = matched_filter(templates, ...
                         n_corr);
                     
 cc_sum = double(reshape(cc_sum, [], n_templates));
+Nzeros = sum(cc_sum(1,:) == 0.);
+if Nzeros > 10
+    text = sprintf('%i correlation computations were skipped. Can be caused by zeros in data, or too low amplitudes (try to increase the gain).', Nzeros);
+    disp(text)
+end
 end
 

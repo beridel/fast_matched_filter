@@ -13,9 +13,11 @@
 #include <float.h>
 #include "matched_filter_CPU.h"
 
+#define STABILITY_THRESHOLD 0.000001f
+
 //-------------------------------------------------------------------------
 void matched_filter(float *templates, float *sum_square_templates, int *moveouts,
-                    float *data, double *csum_square_data,
+                    float *data, float *csum_square_data,
                     float *weights, int step, int n_samples_template, int n_samples_data,
                     int n_templates, int n_stations, int n_components, int n_corr,
                     float *cc_sum) { // output variable
@@ -25,7 +27,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
     int min_moveout, max_moveout;
     int network_offset, station_offset, cc_sum_offset;
     int *moveouts_t = NULL;
-    float *templates_t = NULL, *sum_square_templates_t = NULL;
+    float *templates_t = NULL, *sum_square_templates_t = NULL, *weights_t = NULL;
 
     // run matched filter template by template
     for (t = 0; t < n_templates; t++) {
@@ -43,6 +45,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
     
         templates_t = templates + network_offset * n_samples_template;
         moveouts_t = moveouts + network_offset;
+        weights_t = weights + network_offset;
         sum_square_templates_t = sum_square_templates + network_offset;
 
         start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
@@ -56,7 +59,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
                                                         moveouts_t,
                                                         data + i,
                                                         csum_square_data + i,
-                                                        weights,
+                                                        weights_t,
                                                         n_samples_template,
                                                         n_samples_data,
                                                         n_stations,
@@ -67,7 +70,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
  
 //-------------------------------------------------------------------------
 float network_corr(float *templates, float *sum_square_template, int *moveouts,
-                   float *data, double *csum_square_data, float *weights,
+                   float *data, float *csum_square_data, float *weights,
                    int n_samples_template, int n_samples_data, int n_stations, int n_components) {
 
     int s, c, d, dd, t;
@@ -85,14 +88,12 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
 
             t = component_offset * n_samples_template;
             d = component_offset * n_samples_data + moveouts[component_offset];
-            dd = component_offset * (n_samples_data + 1) + moveouts[component_offset]; // take into account added leading zero
-
             
-            cc += corrc(templates + t,
-                        sum_square_template[component_offset],
-                        data + d,
-                        csum_square_data + dd,
-                        n_samples_template);
+            cc = corrc(templates + t,
+                       sum_square_template[component_offset],
+                       data + d,
+                       csum_square_data + d,
+                       n_samples_template);
             cc_sum += cc * weights[component_offset];
         }
     }
@@ -102,15 +103,38 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
  
 //-------------------------------------------------------------------------
 float corrc(float *templates, float sum_square_template,
-            float *data, double *csum_square_data,
+            float *data, float *csum_square_data,
             int n_samples_template) {
 
     int i;
-    float numerator = 0, sum_square_data;
+    float numerator = 0, denominator = 0, cc = 0;
     
-    for (i = 0; i < n_samples_template; i++) numerator += templates[i] * data[i];
-    sum_square_data = (float)(csum_square_data[i] - csum_square_data[0]); // note i == n_samples_template
-   
-    return numerator / sqrtf(sum_square_template * sum_square_data);
+    for (i = 0; i < n_samples_template; i++){
+        numerator += templates[i] * data[i];
+    }
+    denominator = sum_square_template * csum_square_data[0];
+
+    if (denominator > STABILITY_THRESHOLD) cc = numerator / sqrt(denominator);
+
+    return cc;
+}
+
+//-------------------------------------------------------------------------
+void csum(double *data_sq, int n_samples_template, int n_samples_data,
+          int n_stations, int n_components,
+          double *csum_square_data) {
+
+    int ch, i, n;
+    for (ch = 0; ch < (n_stations*n_components); ch++){
+        double *csum_ch = NULL, *data_sq_ch = NULL;
+        csum_ch = csum_square_data + ch * n_samples_data;
+        data_sq_ch = data_sq + ch * n_samples_data;
+
+        // sliding cumulative sum
+#pragma omp parallel for private(ch, i, n) shared(data_sq_ch, csum_ch)
+        for (n = 0; n < n_samples_data-n_samples_template; n++){
+            for (i = 0; i < n_samples_template; i++) csum_ch[n] += data_sq_ch[n+i];
+        }
+    }
 }
 
