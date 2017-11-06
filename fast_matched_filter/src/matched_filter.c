@@ -119,6 +119,7 @@ float corrc(float *templates, float sum_square_template,
     return cc;
 }
 
+//-------------------------------------------------------------------------
 void csum(double *data_sq, int n_samples_template, int n_samples_data,
           int n_stations, int n_components,
           double *csum_square_data) {

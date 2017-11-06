@@ -14,7 +14,7 @@
 sampling_rate = 100;
 n_templates = 1;
 n_stations = 1;
-n_components = 5;
+n_components = 1;
 template_duration = 10;
 data_duration = 86400;
 step = 1;
