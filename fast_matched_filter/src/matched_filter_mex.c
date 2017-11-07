@@ -81,6 +81,9 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
             for (i = 0; i < n_samples_data; i++) csum_square_data_f[data_offset + i] = (float)csum_square_data[data_offset + i];
         }
     }
+    
+    free(square_data);
+    free(csum_square_data);
    
     /* and do the math */
     matched_filter(templates,
@@ -98,8 +101,6 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
                    n_corr,
                    cc_sum); // output variable
 
-    free(square_data);
-    free(csum_square_data);
     free(csum_square_data_f);
 }
 
