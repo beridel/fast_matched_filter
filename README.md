@@ -10,7 +10,7 @@ Fast Matched Filter is available @ https://github.com/beridel/fast_matched_filte
 and can be downloaded with:
 $ git clone https://github.com/beridel/fast_matched_filter.git
 
-For the adventurous who want to compile beforehand: a simple make + whichever implementation does the trick.  Possible make commands are:
+A simple make + whichever implementation does the trick.  Possible make commands are:
 $ make python_cpu
 $ make python_gpu
 $ make matlab
@@ -24,4 +24,4 @@ OR
 $ python setup.py build
 $ pip install .
 
-Reference: Beaucé, Eric, W. B. Frank, and Alexey Romanenko, Fast matched-filter (FMF): an efficient seismic matched-filter search for both CPU and GPU architectures. In review at Seismological Research Letters.
+Reference: Beaucé, Eric, W. B. Frank, and Alexey Romanenko, Fast matched-filter (FMF): an efficient seismic matched-filter search for both CPU and GPU architectures. _Seismological Research Letters_ (in press)
