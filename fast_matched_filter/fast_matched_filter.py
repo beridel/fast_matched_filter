@@ -115,6 +115,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     for t in range(n_templates):
         for s in range(n_stations):
             for c in range(n_components):
+                templates[t, s, c, :] -= templates[t, s, c, :].mean()
                 sum_square_templates[t, s, c] = np.sum(
                     templates[t, s, c, :n_samples_template] ** 2)
 
