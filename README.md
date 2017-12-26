@@ -24,4 +24,4 @@ OR
 $ python setup.py build
 $ pip install .
 
-Reference: Beaucé, Eric, W. B. Frank, and Alexey Romanenko, Fast matched-filter (FMF): an efficient seismic matched-filter search for both CPU and GPU architectures. _Seismological Research Letters_ (in press)
+Reference: Beaucé, Eric, W. B. Frank, and Alexey Romanenko (2017). Fast matched-filter (FMF): an efficient seismic matched-filter search for both CPU and GPU architectures. _Seismological Research Letters_, doi: [10.1785/0220170181][https://doi.org/10.1785/0220170181]
