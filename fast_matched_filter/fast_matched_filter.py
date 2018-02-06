@@ -184,9 +184,11 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
                 n_corr,
                 cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
     cc_sums = cc_sums.reshape((n_templates, n_corr))
-    zeros = np.sum(cc_sums[0,:n_corr-moveouts.max()/step] == 0.)
+    zeros = np.sum(cc_sums[0, : int(n_corr - moveouts.max() / step)] == 0.)
     if zeros > 10:
-        print("{} correlation computations were skipped. Can be caused by zeros in data, or too low amplitudes (try to increase the gain).".format(zeros))
+        print("{} correlation computations were skipped. Can be caused by"
+              " zeros in data, or too low amplitudes (try to increase the "
+              "gain).".format(zeros))
     return cc_sums
 
 
