@@ -23,7 +23,6 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     int n_templates, n_stations, n_components, n_corr; // size input
     float *cc_sum; // output
     int i, t, station_offset, s, c;
-    int n_samples_out;
     int data_offset;
     
     /* check for good number of inputs/outputs */
@@ -63,7 +62,7 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     n_corr = (int)mxGetScalar(ptrInputs[11]);
    
     /* prepare outputs */
-    n_samples_out = n_corr * n_templates;
+    const mwSize n_samples_out = n_corr * n_templates;
     ptrOutputs[0] = mxCreateNumericArray(1, &(n_samples_out), mxSINGLE_CLASS, mxREAL);
     cc_sum = (float*)mxGetData(ptrOutputs[0]);
 
