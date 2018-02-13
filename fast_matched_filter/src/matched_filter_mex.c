@@ -32,7 +32,7 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
                  sum_square_templates (float*), \
                  moveouts (int*), \
                  data (float*), \
-                 csum_square_data (float*), \
+                 csum_square_data_f (float*), \
                  weights (float*), \
                  step (int), \
                  n_samples_template (int*), \

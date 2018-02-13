@@ -4,15 +4,17 @@
 %     GNU General Public License, Version 3
 %     (https://www.gnu.org/licenses/gpl-3.0.en.html)
 
-%NB all data and templates must have their mean removed
-% otherwise, simplified correlation coefficient equation is no
-% longer valid!!!
+%NB all data must be detrended / highpass filtered and templates 
+% must have their mean removed otherwise, 
+% simplified correlation coefficient equation is no
+% longer valid!!! (cf. consequences_nonzero.pdf)
 % this is already the case for this mean zero random data/templates
 % but not necessarily the case for real data
 
+
 %% define network and waveforms
-sampling_rate = 100;
-n_templates = 1;
+sampling_rate = 10;
+n_templates = 2;
 n_stations = 1;
 n_components = 1;
 template_duration = 10;
@@ -65,4 +67,13 @@ weights = ones(n_stations, n_templates) / n_stations;
 tic;
 cc_sum = fast_matched_filter(templates, moveouts, weights, data, step);
 fprintf('Done in %.2f seconds!\n', toc);
+
+%% Check the accuracy 
+for t =1:n_templates
+    fprintf('========================================\n');
+    fprintf('Template %i was extracted from synthetic data at time %.1fsec.\n', t, template_start_times(1,t));
+    max_cc = max(cc_sum(:,t));
+    time_max_cc = find(cc_sum(:,t) == max_cc) / sampling_rate;
+    fprintf('Maximum correlation (%.2f) found at time %.2fsec.\n', max_cc, time_max_cc);
+end
 

@@ -7,8 +7,12 @@
 function [cc_sum] = fast_matched_filter(templates, moveouts, weights, data, step)
 % input:
 % templates ---------- 4D matrix [time x components x stations x templates]
-% n_samples_template - 2D matrix [stations x templates]
-% moveouts ----------- 2D matrix [stations x templates]
+% moveouts ----------- 3D matrix [components x stations x templates]
+%                   or 2D matrix [stations x templates] 
+%                   (in that case, the same moveout is attributed to each component)
+% weights ------------ 3D matrix [components x stations x templates]
+%                   or 2D matrix [stations x templates] 
+%                   (in that case, the same weight is attributed to each component)
 % data --------------- 3D matrix [time x components x stations]
 % step --------------- interval between correlations (in samples)
 %
@@ -36,15 +40,24 @@ sum_square_templates = squeeze(sum(templates .^ 2, 1));
 
 n_corr = floor((n_samples_data - n_samples_template - max(moveouts(:))) / step);
 
+% extend the moveouts and weights matrices from 2D to 3D matrices, if necessary
+b = ones(n_components, 1);
+if numel(moveouts) ~= n_components * n_stations * n_templates
+    moveouts = reshape(kron(moveouts, b), [n_components, n_stations, n_templates]);
+end
+if numel(weights) ~= n_components * n_stations * n_templates
+    weights = reshape(kron(weights, b), [n_components, n_stations, n_templates]);
+end
+
 % input arguments (brackets indicate a non-scalar variable):
 % templates (float) [time x components x stations x templates]
 % sum of square of templates (float) [components x stations x templates]
-% N samples of templates (int) [stations x templates]
-% moveouts (int) [stations x templates]
+% moveouts (int) [components x stations x templates]
 % data (float) [time x components x stations]
-% data squared (float) [time x components x stations]
-% N samples per data trace (int)
+% weights (float) [components x stations x templates]
 % step, or the samples between each sliding window (int)
+% N samples per template trace (int)
+% N samples per data trace (int)
 % N templates (int)
 % N stations (int)
 % N components (int)
