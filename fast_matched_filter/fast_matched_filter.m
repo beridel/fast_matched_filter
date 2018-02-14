@@ -38,7 +38,7 @@ sum_square_templates = squeeze(sum(templates .^ 2, 1));
 %csum_square_data = single(csum_square_data);
 %clear data_double_sq;
 
-n_corr = floor((n_samples_data - n_samples_template - max(moveouts(:))) / step);
+n_corr = floor((n_samples_data - n_samples_template) / step + 1);
 
 % extend the moveouts and weights matrices from 2D to 3D matrices, if necessary
 b = ones(n_components, 1);
@@ -46,7 +46,7 @@ if numel(moveouts) ~= n_components * n_stations * n_templates
     moveouts = reshape(kron(moveouts, b), [n_components, n_stations, n_templates]);
 end
 if numel(weights) ~= n_components * n_stations * n_templates
-    weights = reshape(kron(weights, b), [n_components, n_stations, n_templates]);
+    weights = reshape(kron(weights, b), [n_components, n_stations, n_templates]) / n_components;
 end
 
 % input arguments (brackets indicate a non-scalar variable):
@@ -92,7 +92,8 @@ cc_sum = matched_filter(templates, ...
                         n_components, ...
                         n_corr);
                     
-cc_sum = double(reshape(cc_sum, [], n_templates));
+%cc_sum = double(reshape(cc_sum, [], n_templates));
+cc_sum = reshape(cc_sum, [], n_templates);
 Nzeros = sum(cc_sum(1,:) == 0.);
 if Nzeros > 10
     text = sprintf('%i correlation computations were skipped. Can be caused by zeros in data, or too low amplitudes (try to increase the gain).', Nzeros);
