@@ -21,9 +21,8 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     float *weights = NULL; // weights for each CC
     int n_samples_template, n_samples_data, step;
     int n_templates, n_stations, n_components, n_corr; // size input
-    float *cc_sum; // output
+    float *cc_sum = NULL; // output
     int i, t, station_offset, s, c;
-    int n_samples_out;
     int data_offset;
     
     /* check for good number of inputs/outputs */
@@ -33,7 +32,7 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
                  sum_square_templates (float*), \
                  moveouts (int*), \
                  data (float*), \
-                 csum_square_data (float*), \
+                 csum_square_data_f (float*), \
                  weights (float*), \
                  step (int), \
                  n_samples_template (int*), \
@@ -61,16 +60,12 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     n_stations = (int)mxGetScalar(ptrInputs[9]);
     n_components = (int)mxGetScalar(ptrInputs[10]);
     n_corr = (int)mxGetScalar(ptrInputs[11]);
-   
-    /* prepare outputs */
-    n_samples_out = n_corr * n_templates;
-    ptrOutputs[0] = mxCreateNumericArray(1, &(n_samples_out), mxSINGLE_CLASS, mxREAL);
-    cc_sum = (float*)mxGetData(ptrOutputs[0]);
+
 
     /* precompute cumulative sum of squares for data */
-    square_data = (double*)malloc(n_samples_data * n_stations * n_components * sizeof(double));
-    csum_square_data = (double*)malloc(n_samples_data * n_stations * n_components * sizeof(double));
-    csum_square_data_f = (float*)malloc(n_samples_data * n_stations * n_components * sizeof(float));
+    square_data = (double*)mxMalloc(n_samples_data * n_stations * n_components * sizeof(double));
+    csum_square_data = (double*)mxMalloc(n_samples_data * n_stations * n_components * sizeof(double));
+    csum_square_data_f = (float*)mxMalloc(n_samples_data * n_stations * n_components * sizeof(float));
     
     for (s = 0; s < n_stations; s++) {
         for (c = 0; c < n_components; c++) {
@@ -82,9 +77,14 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
         }
     }
     
-    free(square_data);
-    free(csum_square_data);
+    mxFree(square_data);
+    mxFree(csum_square_data);
    
+    /* prepare outputs */
+    const mwSize n_samples_out = n_corr * n_templates;
+    ptrOutputs[0] = mxCreateNumericArray(1, &(n_samples_out), mxSINGLE_CLASS, mxREAL);
+    cc_sum = (float*)mxGetData(ptrOutputs[0]);
+    
     /* and do the math */
     matched_filter(templates,
                    sum_square_templates,
@@ -101,6 +101,8 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
                    n_corr,
                    cc_sum); // output variable
 
-    free(csum_square_data_f);
+    mxFree(csum_square_data_f);
+    
+    //mxSetData(ptrOutputs[0], cc_sum);
 }
 
