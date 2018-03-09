@@ -27,7 +27,7 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     
     /* check for good number of inputs/outputs */
     if (nInputs != 12)
-        mexErrMsgIdAndTxt("Matlab:matched_filter.c", "Thirteen inputs required: \
+        mexErrMsgIdAndTxt("Matlab:matched_filter.c", "Twelve inputs required: \
                  templates (float*), \
                  sum_square_templates (float*), \
                  moveouts (int*), \
@@ -61,25 +61,6 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
     n_components = (int)mxGetScalar(ptrInputs[10]);
     n_corr = (int)mxGetScalar(ptrInputs[11]);
 
-
-    /* precompute cumulative sum of squares for data */
-    square_data = (double*)mxMalloc(n_samples_data * n_stations * n_components * sizeof(double));
-    csum_square_data = (double*)mxMalloc(n_samples_data * n_stations * n_components * sizeof(double));
-    csum_square_data_f = (float*)mxMalloc(n_samples_data * n_stations * n_components * sizeof(float));
-    
-    for (s = 0; s < n_stations; s++) {
-        for (c = 0; c < n_components; c++) {
-            data_offset = n_samples_data * (s * n_components + c);
-            
-            for (i = 0; i < n_samples_data; i++) square_data[data_offset + i] = (double)(data[data_offset + i] * data[data_offset + i]);
-            csum(square_data, n_samples_template, n_samples_data, n_stations, n_components, csum_square_data);
-            for (i = 0; i < n_samples_data; i++) csum_square_data_f[data_offset + i] = (float)csum_square_data[data_offset + i];
-        }
-    }
-    
-    mxFree(square_data);
-    mxFree(csum_square_data);
-   
     /* prepare outputs */
     const mwSize n_samples_out = n_corr * n_templates;
     ptrOutputs[0] = mxCreateNumericArray(1, &(n_samples_out), mxSINGLE_CLASS, mxREAL);
@@ -90,7 +71,6 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
                    sum_square_templates,
                    moveouts,
                    data,
-                   csum_square_data_f,
                    weights,
                    step,
                    n_samples_template,

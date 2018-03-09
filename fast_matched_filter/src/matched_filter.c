@@ -17,7 +17,7 @@
 
 //-------------------------------------------------------------------------
 void matched_filter(float *templates, float *sum_square_templates, int *moveouts,
-                    float *data, float *csum_square_data,
+                    float *data, 
                     float *weights, int step, int n_samples_template, int n_samples_data,
                     int n_templates, int n_stations, int n_components, int n_corr,
                     float *cc_sum) { // output variable
@@ -28,6 +28,11 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
     int network_offset, station_offset, cc_sum_offset;
     int *moveouts_t = NULL;
     float *templates_t = NULL, *sum_square_templates_t = NULL, *weights_t = NULL;
+    float *csum_square_data = NULL;
+
+    // compute cumulative sum of squares of data
+    csum_square_data = malloc(n_samples_data * n_stations * n_components * sizeof(float));
+    csum_square_neumaier(data, n_samples_template, n_samples_data, n_stations, n_components, csum_square_data);
 
     // run matched filter template by template
     for (t = 0; t < n_templates; t++) {
@@ -66,6 +71,8 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
                                                         n_components);
         }
     }
+
+    free(csum_square_data);
 }
  
 //-------------------------------------------------------------------------
@@ -134,6 +141,49 @@ void csum(double *data_sq, int n_samples_template, int n_samples_data,
 #pragma omp parallel for private(ch, i, n) shared(data_sq_ch, csum_ch)
         for (n = 0; n < n_samples_data-n_samples_template; n++){
             for (i = 0; i < n_samples_template; i++) csum_ch[n] += data_sq_ch[n+i];
+        }
+    }
+}
+
+//-------------------------------------------------------------------------
+void csum_square_neumaier(float *data, int n_samples_template, int n_samples_data,
+          int n_stations, int n_components,
+          float *csum_square_data) {
+
+    int ch, i, channel_offset;
+    float running_csum, temp_csum, correction;
+    float data_squared, data_squared_before, data_squared_after, data_squared_difference;
+
+    for (ch = 0; ch < (n_stations * n_components); ch++) {
+        channel_offset = ch * n_samples_data;
+
+        // start running csum
+        running_csum = data[channel_offset] * data[channel_offset];
+        correction = 0.0;
+        for (i = 1; i < n_samples_template; i++) {
+            data_squared = data[channel_offset + i] * data[channel_offset + i];
+            temp_csum = running_csum + data_squared;
+            
+            if (fabsf(running_csum) >= fabsf(data_squared)) correction += (running_csum - temp_csum) + data_squared;
+            else correction += (data_squared - temp_csum) + running_csum;
+
+            running_csum = temp_csum;
+        }
+        csum_square_data[channel_offset] = running_csum + correction;
+
+        // do everything else
+        for (i = 0; i < n_samples_data - n_samples_template - 1; i++) {
+            running_csum = csum_square_data[channel_offset + i];
+
+            data_squared_before = data[channel_offset + i] * data[channel_offset + i];
+            data_squared_after = data[channel_offset + i + n_samples_template] * data[channel_offset + i + n_samples_template];
+            data_squared_difference = data_squared_after - data_squared_before;
+
+            temp_csum = running_csum + data_squared_difference;
+            if (fabsf(running_csum) >= fabsf(data_squared_difference)) correction = (running_csum - temp_csum) + data_squared_difference;
+            else correction = (data_squared_difference - temp_csum) + running_csum;
+
+            csum_square_data[channel_offset + i + 1] = temp_csum + correction;
         }
     }
 }
