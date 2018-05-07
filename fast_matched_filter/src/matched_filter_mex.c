@@ -78,9 +78,5 @@ void mexFunction(int nOutputs, mxArray *ptrOutputs[], int nInputs, const mxArray
                    n_components,
                    n_corr,
                    cc_sum); // output variable
-
-    mxFree(csum_square_data_f);
-    
-    //mxSetData(ptrOutputs[0], cc_sum);
 }
 
