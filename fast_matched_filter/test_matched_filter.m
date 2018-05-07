@@ -13,11 +13,11 @@
 
 
 %% define network and waveforms
-sampling_rate = 10;
-n_templates = 2;
-n_stations = 2;
+sampling_rate = 50;
+n_templates = 5;
+n_stations = 10;
 n_components = 3;
-template_duration = 10;
+template_duration = 8;
 data_duration = 86400;
 step = 1;
 
@@ -71,9 +71,9 @@ fprintf('Done in %.2f seconds!\n', toc);
 %% Check the accuracy 
 for t =1:n_templates
     fprintf('========================================\n');
-    fprintf('Template %i was extracted from synthetic data at time %.1fsec.\n', t, template_start_times(1,t));
+    fprintf('Template %i was extracted from the synthetic data at time %.1f s.\n', t, template_start_times(1,t));
     max_cc = max(cc_sum(:,t));
-    time_max_cc = find(cc_sum(:,t) == max_cc) / sampling_rate;
-    fprintf('Maximum correlation (%.2f) found at time %.2fsec.\n', max_cc, time_max_cc);
+    time_max_cc = (find(cc_sum(:,t) == max_cc) - 1) / sampling_rate * step;
+    fprintf('Maximum correlation (%.2f) found at time %.1f s.\n', max_cc, time_max_cc);
 end
 
