@@ -115,10 +115,10 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
 
     # check shapes
     expected_size = n_templates * n_stations * n_components
-    if expected_size/moveouts.size == n_components:
+    if expected_size / moveouts.size == n_components:
         # moveouts are specified per station
         moveouts = np.repeat(moveouts, n_components).reshape(n_templates, n_stations, n_components)
-    if expected_size/weights.size == n_components:
+    if expected_size / weights.size == n_components:
         # weights are specified per station
         weights = np.repeat(weights, n_components).reshape(n_templates, n_stations, n_components)
     moveouts = np.int32(moveouts.flatten())
@@ -161,7 +161,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
                 n_corr,
                 cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
     cc_sums = cc_sums.reshape((n_templates, n_corr))
-    zeros = np.sum(cc_sums[0, : int(n_corr - moveouts.max() / step)] == 0.)
+    zeros = np.sum(cc_sums[0, :int(n_corr - moveouts.max() / step)] == 0.)
     if zeros > 10:
         print("{} correlation computations were skipped. Can be caused by"
               " zeros in data, or too low amplitudes (try to increase the "
@@ -177,6 +177,9 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     """
 
     template_times = np.random.random_sample(n_templates) * (data_duration / 2)
+    # if step is not 1, not very likely that random times will be found
+    if step != 1:
+        template_times = np.round(template_times / (step / sampling_rate)) * (step / sampling_rate)
     # determines how many templates there are
 
     min_moveout = 0
