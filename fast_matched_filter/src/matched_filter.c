@@ -131,20 +131,15 @@ float corrc(float *templates, float sum_square_template,
 void cumsum_square_data(float *data, int n_samples_data, float *weights,
                         int n_stations, int n_components,
                         double *csum_square_data) {
-    int s, c;
-    int station_offset, component_offset, d;
+    int ch, d;
 
-    for (s = 0; s < n_stations; s++) {
-        station_offset = s * n_components;
+    // loop over channels
+#pragma omp parallel for private(ch, d)
+    for (ch = 0; ch < n_stations * n_components; ch++) {
+        d = ch * n_samples_data;
 
-        for (c = 0; c < n_components; c++) {
-            component_offset = station_offset + c;
-            if (weights[component_offset] == 0) continue;
-            d = component_offset * n_samples_data;
-
-            neumaier_cumsum_squared(data + d, n_samples_data,
-                                    csum_square_data + d);
-        }
+        neumaier_cumsum_squared(data + d, n_samples_data,
+                                csum_square_data + d);
     }
 }
 
