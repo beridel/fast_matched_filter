@@ -110,7 +110,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
                     templates[t, s, c, :n_samples_template] ** 2)
 
     templates = np.float32(templates.flatten())
-    sum_square_templates = np.float32(sum_square_templates.flatten())
+    sum_square_templates = sum_square_templates.flatten()
 
     # check shapes
     expected_size = n_templates * n_stations * n_components
@@ -126,7 +126,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     # Note: shouldn't need to enforce int here because they were np.int32 before
 
     data = np.float32(data.flatten())
-    cc_sums = np.zeros(int(n_templates) * int(n_corr), dtype=np.float32)
+    cc_sums = np.zeros(n_templates * n_corr, dtype=np.float32)
 
     if arch == 'cpu':
         _libCPU.matched_filter(
