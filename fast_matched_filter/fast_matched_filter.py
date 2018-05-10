@@ -12,7 +12,6 @@ import numpy as np
 import ctypes as ct
 import datetime as dt
 import os
-from IPython.core.debugger import Tracer; debug_here = Tracer()
 
 path = os.path.join(os.path.dirname(__file__), 'lib')
 CPU_LOADED = False
