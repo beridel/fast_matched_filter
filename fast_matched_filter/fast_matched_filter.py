@@ -191,14 +191,14 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     moveouts = np.round(moveouts * sampling_rate)
 
     # generate data
-    n_samples_data = data_duration * sampling_rate
+    n_samples_data = np.int32(data_duration * sampling_rate)
     data = np.random.random_sample((n_stations, n_components, n_samples_data))
     for s in range(n_stations):
         for c in range(n_components):
             data[s, c, :] = data[s, c, :] - np.mean(data[s, c, :])
 
     # generate templates from data
-    n_samples_template = template_duration * sampling_rate
+    n_samples_template = np.int32(template_duration * sampling_rate)
     n_templates = template_times.size
     templates = np.zeros((n_templates,
                           n_stations,
