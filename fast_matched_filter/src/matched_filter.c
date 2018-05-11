@@ -31,9 +31,9 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
     double *csum_square_data = NULL;
 
     // compute cumulative sum of squares of data
-    csum_square_data = malloc((n_samples_data * n_stations * n_components + 1) * sizeof(double));
+    csum_square_data = malloc(((n_samples_data + 1) * n_stations * n_components) * sizeof(double));
     csum_square_data[0] = 0.0;
-    cumsum_square_data(data, n_samples_data, weights, n_stations, n_components, csum_square_data + 1);
+    cumsum_square_data(data, n_samples_data, weights, n_stations, n_components, csum_square_data);
 
     // run matched filter template by template
     for (t = 0; t < n_templates; t++) {
@@ -94,13 +94,14 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
             component_offset = station_offset + c;
             if (weights[component_offset] == 0) continue;
 
-            t = component_offset * n_samples_template;
-            d = component_offset * n_samples_data + moveouts[component_offset];
+            t  = component_offset * n_samples_template;
+            d  = component_offset * n_samples_data + moveouts[component_offset];
+            dd = component_offset * (n_samples_data + 1) + moveouts[component_offset];
             
             cc = corrc(templates + t,
                        sum_square_template[component_offset],
                        data + d,
-                       csum_square_data + d,
+                       csum_square_data + dd,
                        n_samples_template);
             cc_sum += cc * weights[component_offset];
         }
@@ -131,15 +132,16 @@ float corrc(float *templates, float sum_square_template,
 void cumsum_square_data(float *data, int n_samples_data, float *weights,
                         int n_stations, int n_components,
                         double *csum_square_data) {
-    int ch, d;
+    int ch, data_offset, csum_offset;
 
     // loop over channels
-#pragma omp parallel for private(ch, d)
+#pragma omp parallel for private(ch, data_offset, csum_offset)
     for (ch = 0; ch < n_stations * n_components; ch++) {
-        d = ch * n_samples_data;
+        data_offset = ch * n_samples_data;
+        csum_offset = ch * (n_samples_data + 1) + 1;
 
-        neumaier_cumsum_squared(data + d, n_samples_data,
-                                csum_square_data + d);
+        neumaier_cumsum_squared(data + data_offset, n_samples_data,
+                                csum_square_data + csum_offset);
     }
 }
 
