@@ -174,11 +174,6 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     """
     output: templates, moveouts, data, step, cc_sum
     """
-    if float(int(sampling_rate)) != float(sampling_rate):
-        print('The sampling rate should be an integer !\nCorrect that before running the test function.')
-        return
-    else:
-        sampling_rate = int(sampling_rate)
 
     template_times = np.random.random_sample(n_templates) * (data_duration / 2)
     # if step is not 1, not very likely that random times will be found
@@ -197,6 +192,13 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
     # generate data
     n_samples_data = data_duration * sampling_rate
+    if float(int(n_samples_data)) == float(n_samples_data):
+        n_samples_data = np.int32(n_samples_data)
+    else:
+        print('The data duration times the sampling rate yields a non-integer number of samples !')
+        print('Adjust your input parameters so that this product is an integer.')
+        return
+
     data = np.random.random_sample((n_stations, n_components, n_samples_data))
     for s in range(n_stations):
         for c in range(n_components):
@@ -204,6 +206,13 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
     # generate templates from data
     n_samples_template = template_duration * sampling_rate
+    if float(int(n_samples_template)) == float(n_samples_template):
+        n_samples_template = np.int32(n_samples_template)
+    else:
+        print('The template duration times the sampling rate yields a non-integer number of samples !')
+        print('Adjust your input parameters so that this product is an integer.')
+        return
+
     n_templates = template_times.size
     templates = np.zeros((n_templates,
                           n_stations,
