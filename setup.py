@@ -38,13 +38,6 @@ class FastMatchedFilterBuild(build):
         if cpu_built is False:
             raise OSError("Could not build cpu code")
 
-
-# Define a new install command
-class FastMatchedFilterInstall(install):
-    def run(self):
-        install.run(self)
-
-
 # Get the long description - it won't have md formatting properly without
 # using pandoc though, but that adds another dependancy.
 with open('README.md') as f:
@@ -71,5 +64,4 @@ setup(name='FastMatchedFilter',
       include_package_data=True,
       zip_safe=False,
       cmdclass={
-          'build': FastMatchedFilterBuild,
-          'install': FastMatchedFilterInstall})
+          'build': FastMatchedFilterBuild})
