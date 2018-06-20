@@ -9,17 +9,20 @@ Minimal setup file for the fast_matched_filter library for Python packaging.
 """
 
 import os
-from setuptools import setup
+from setuptools import setup, Extension
 from setuptools.command.install import install
-from distutils.command.build import build
+from setuptools.command.build_ext import build_ext as build_ext_original
 from subprocess import call
 
 
+class FMFExtension(Extension):
+    def __init__(self, name):
+        # Don't run the default setup-tools build commands, use the custom one
+        super().__init__(name, sources=[])
+
 # Define a new build command
-class FastMatchedFilterBuild(build):
+class FastMatchedFilterBuild(build_ext_original):
     def run(self):
-        # Run standard python build things
-        build.run(self)
         # Build the Python libraries via Makefile
         cpu_make = ['make', 'python_cpu']
         gpu_make = ['make', 'python_gpu']
@@ -39,7 +42,7 @@ class FastMatchedFilterBuild(build):
             raise OSError("Could not build cpu code")
 
 # Get the long description - it won't have md formatting properly without
-# using pandoc though, but that adds another dependancy.
+# using pandoc though, but that adds another dependency.
 with open('README.md') as f:
     long_description = f.read()
 
@@ -64,4 +67,6 @@ setup(name='FastMatchedFilter',
       include_package_data=True,
       zip_safe=False,
       cmdclass={
-          'build': FastMatchedFilterBuild})
+          'build_ext': FastMatchedFilterBuild},
+      ext_modules=[FMFExtension('fast_matched_filter.lib.matched_filter_CPU'),
+                   FMFExtension('fast_matched_filter.lib.matched_filter_GPU')])
