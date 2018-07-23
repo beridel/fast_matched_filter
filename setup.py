@@ -8,9 +8,7 @@ Minimal setup file for the fast_matched_filter library for Python packaging.
     (https://www.gnu.org/licenses/gpl-3.0.en.html)
 """
 
-import os
 from setuptools import setup, Extension
-from setuptools.command.install import install
 from setuptools.command.build_ext import build_ext as build_ext_original
 from subprocess import call
 
@@ -18,7 +16,8 @@ from subprocess import call
 class FMFExtension(Extension):
     def __init__(self, name):
         # Don't run the default setup-tools build commands, use the custom one
-        super().__init__(name, sources=[])
+        Extension.__init__(self, name=name, sources=[])
+
 
 # Define a new build command
 class FastMatchedFilterBuild(build_ext_original):
@@ -40,6 +39,7 @@ class FastMatchedFilterBuild(build_ext_original):
             print("Could not build GPU code")
         if cpu_built is False:
             raise OSError("Could not build cpu code")
+
 
 # Get the long description - it won't have md formatting properly without
 # using pandoc though, but that adds another dependency.
