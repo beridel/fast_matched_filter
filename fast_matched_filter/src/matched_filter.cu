@@ -133,7 +133,7 @@ void matched_filter(float *templates, float *sum_square_templates,
 
     // find the number of available GPUs
     cudaGetDeviceCount(&nGPUs);
-    omp_set_num_threads(nGPUs);
+    omp_set_num_threads(fminf((float)nGPUs, (float)n_templates));
 
     int chunk_size = n_corr/NCHUNKS + 1;
 
