@@ -47,7 +47,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 setup(name='FastMatchedFilter',
-      version='0.0.1',
+      version='1.1.0',
       description='Fast time-domain normalised cross-correlation for '
                   'CPU & GPU',
       long_description=long_description,
@@ -58,7 +58,7 @@ setup(name='FastMatchedFilter',
         'Topic :: Seismology :: Matched Filter',
       ],
       url='https://github.com/beridel/fast_matched_filter',
-      author='William Frank',
+      author='William Frank, Eric Beauce',
       author_email='',
       license='GPL',
       packages=['fast_matched_filter'],
