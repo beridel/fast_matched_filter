@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
+#include <string.h>
 #include "matched_filter_CPU.h"
 
 #define STABILITY_THRESHOLD 0.000001f
@@ -32,7 +33,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
 
     // compute cumulative sum of squares of data
     csum_square_data = malloc(((n_samples_data + 1) * n_stations * n_components) * sizeof(double));
-    csum_square_data[0] = 0.0;
+    memset(csum_square_data, 0., ((n_samples_data + 1) * n_stations * n_components) * sizeof(double));
     cumsum_square_data(data, n_samples_data, weights, n_stations, n_components, csum_square_data);
 
     // run matched filter template by template
@@ -124,7 +125,6 @@ float corrc(float *templates, float sum_square_template,
     denominator = sum_square_template * (float)(csum_square_data[n_samples_template] - csum_square_data[-1]);
 
     if (denominator > STABILITY_THRESHOLD) cc = numerator / sqrt(denominator);
-
     return cc;
 }
 
@@ -137,6 +137,8 @@ void cumsum_square_data(float *data, int n_samples_data, float *weights,
     // loop over channels
 #pragma omp parallel for private(ch, data_offset, csum_offset)
     for (ch = 0; ch < n_stations * n_components; ch++) {
+        if (weights[ch] == 0) continue;
+
         data_offset = ch * n_samples_data;
         csum_offset = ch * (n_samples_data + 1) + 1;
 
