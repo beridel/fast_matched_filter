@@ -20,25 +20,15 @@ function [cc_sum] = fast_matched_filter(templates, moveouts, weights, data, step
 %     using this function
 %
 % output:
-% 2D matrix [times x templates (at step defined interval)]
+% 2D matrix [times (at step defined interval) x templates]
 n_samples_template = size(templates, 1);
 n_components = size(templates, 2);
 n_stations = size(templates, 3);
 n_templates = size(templates, 4);
 n_samples_data = size(data, 1);
+n_corr = floor((n_samples_data - n_samples_template) / step + 1);
 
 sum_square_templates = squeeze(sum(templates .^ 2, 1));
-
-%data_double_sq = double(data) .^ 2;
-%csum_square_data = csum(data_double_sq, ...
-%                        n_samples_template, ...
-%                        n_samples_data, ...
-%                        n_stations, ...
-%                        n_components);
-%csum_square_data = single(csum_square_data);
-%clear data_double_sq;
-
-n_corr = floor((n_samples_data - n_samples_template) / step + 1);
 
 % extend the moveouts and weights matrices from 2D to 3D matrices, if necessary
 b = ones(n_components, 1);
@@ -46,7 +36,7 @@ if numel(moveouts) ~= n_components * n_stations * n_templates
     moveouts = reshape(kron(moveouts, b), [n_components, n_stations, n_templates]);
 end
 if numel(weights) ~= n_components * n_stations * n_templates
-    weights = reshape(kron(weights, b), [n_components, n_stations, n_templates]) / n_components;
+    weights = reshape(kron(weights, b), [n_components, n_stations, n_templates]);
 end
 
 % input arguments (brackets indicate a non-scalar variable):
@@ -92,12 +82,11 @@ cc_sum = matched_filter(templates, ...
                         n_components, ...
                         n_corr);
                     
-%cc_sum = double(reshape(cc_sum, [], n_templates));
 cc_sum = reshape(cc_sum, [], n_templates);
-Nzeros = sum(cc_sum(1,:) == 0.);
-if Nzeros > 10
-    text = sprintf('%i correlation computations were skipped. Can be caused by zeros in data, or too low amplitudes (try to increase the gain).', Nzeros);
-    disp(text)
+n_zeros = sum(cc_sum(:,1) == 0.);
+if n_zeros > 10
+    text = sprintf('%d correlation computations were skipped. Can be caused by zeros in data, or too low amplitudes (try to increase the gain).\n', n_zeros);
+    fprintf(text);
 end
 end
 
