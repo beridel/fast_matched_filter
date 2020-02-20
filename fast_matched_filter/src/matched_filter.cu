@@ -285,8 +285,10 @@ void matched_filter(float *templates, float *sum_square_templates,
                 // weighted sum of correlation coefficients
                 cudaMemset(cc_sum_d, 0, sizeof_cc_sum);
 
-                dim3 GS_sum(ceilf(cs / (float)BS.x));
-                sum_cc<<<GS_sum, BS>>>(cc_mat_d, cc_sum_d, weights_d_t, n_stations, n_components, n_corr_t, chunk_offset, cs);
+                // using a small block size seems to improve the speed of sum_cc 
+                dim3 BS_sum(32);
+                dim3 GS_sum(ceilf(cs / (float)BS_sum.x));
+                sum_cc<<<GS_sum, BS_sum>>>(cc_mat_d, cc_sum_d, weights_d_t, n_stations, n_components, n_corr_t, chunk_offset, cs);
 
                 // return an error if something happened in the kernel (and crash the program)
                 gpuErrchk(cudaPeekAtLastError());
