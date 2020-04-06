@@ -92,11 +92,30 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
         print("Compiled library for {} not loaded; exiting!".format(arch))
         return
 
-    n_templates = np.int32(templates.shape[0])
-    n_stations = np.int32(data.shape[0])
-    n_components = np.int32(data.shape[1])
+    if templates.ndim == 2:
+        n_templates = np.int32(1)
+    elif templates.ndim == 3 and data.ndim == 2:
+        n_templates = np.int32(1)
+    else:
+        n_templates = np.int32(templates.shape[0])
     n_samples_template = np.int32(templates.shape[-1])
+    
+    n_stations = np.int32(data.shape[0])
     n_samples_data = np.int32(data.shape[-1])
+    if data.ndim == 2:
+        n_components = np.int32(1)
+        data = data.reshape(n_stations, n_components, n_samples_data)
+    else:
+        n_components = np.int32(data.shape[1])
+
+    # reshape inputs if necessary
+    if templates.shape != (n_templates, n_stations, n_components, n_samples_template):
+        templates = templates.reshape(n_templates, n_stations, n_components, n_samples_template)
+    if moveouts.shape != (n_templates, n_stations, n_components):
+        moveouts = moveouts.reshape(n_templates, n_stations, n_components)
+    if weights.shape != (n_templates, n_stations, n_components):
+        weights = weights.reshape(n_templates, n_stations, n_components)
+
     n_corr = np.int32((n_samples_data - n_samples_template) / step + 1)
 
     # compute sum of squares for templates
@@ -106,12 +125,12 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
         for s in range(n_stations):
             for c in range(n_components):
                 #templates[t, s, c, :] -= templates[t, s, c, :].mean()
-                sum_square_templates[t, s, c] = np.sum(
-                    templates[t, s, c, :n_samples_template] ** 2)
+                sum_square_templates[t, s, c] = np.sum(templates[t, s, c, :n_samples_template] ** 2)
 
     templates = np.float32(templates.flatten())
     sum_square_templates = sum_square_templates.flatten()
 
+    """William: I think below is now redundant?
     # check shapes
     expected_size = n_templates * n_stations * n_components
     if expected_size / moveouts.size == n_components:
@@ -120,6 +139,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     if expected_size / weights.size == n_components:
         # weights are specified per station
         weights = np.repeat(weights, n_components).reshape(n_templates, n_stations, n_components)
+    """
     moveouts = np.int32(moveouts.flatten())
     weights = np.float32(weights.flatten())
     step = np.int32(step)
