@@ -137,7 +137,6 @@ void cumsum_square_data(float *data, int n_samples_data, float *weights,
     // loop over channels
 #pragma omp parallel for private(ch, data_offset, csum_offset)
     for (ch = 0; ch < n_stations * n_components; ch++) {
-        if (weights[ch] == 0) continue;
 
         data_offset = ch * n_samples_data;
         csum_offset = ch * (n_samples_data + 1) + 1;
