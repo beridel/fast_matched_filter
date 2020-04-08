@@ -108,7 +108,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
         else:
             impossible_dimensions = True
 
-    elif: templates.ndim == date.ndim:
+    elif: templates.ndim == data.ndim:
         n_templates = np.int32(1)
         
         assert templates.shape[0] == data.shape[0] # check stations
