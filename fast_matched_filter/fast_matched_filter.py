@@ -125,10 +125,6 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     else:
         impossible_dimensions = True
     
-    if impossible_dimensions:
-        print("Template and data dimensions are not compatible!")
-        return
-
     n_samples_template = templates.shape[-1]
     if templates.shape != (n_templates, n_stations, n_components, n_samples_template):
         templates = templates.reshape(n_templates, n_stations, n_components, n_samples_template)
@@ -140,12 +136,20 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     assert moveouts.shape == weights.shape
 
     if moveouts.shape != (n_templates, n_stations, n_components):
-        assert (n_templates * n_stations * n_components) / moveouts.size == n_components
-        moveouts = np.repeat(moveouts, n_components).reshape(n_templates, n_stations, n_components)
+        if (n_templates * n_stations * n_components) / moveouts.size == n_components:
+            moveouts = np.repeat(moveouts, n_components).reshape(n_templates, n_stations, n_components)
+        elif (n_templates * n_stations * n_components) / moveouts.size == 1.:
+            moveouts = moveouts.reshape(n_templates, n_stations, n_components)
 
     if weights.shape != (n_templates, n_stations, n_components):
-        assert (n_templates * n_stations * n_components) / weights.size == n_components
-        weights = np.repeat(weights, n_components).reshape(n_templates, n_stations, n_components)
+        if (n_templates * n_stations * n_components) / weights.size == n_components:
+            weights = np.repeat(weights, n_components).reshape(n_templates, n_stations, n_components)
+        elif (n_templates * n_stations * n_components) / weights.size == 1.:
+            weights = weights.reshape(n_templates, n_stations, n_components)
+
+    if impossible_dimensions:
+        print("Template and data dimensions are not compatible!")
+        return
 
     n_corr = np.int32((n_samples_data - n_samples_template) / step + 1)
 
