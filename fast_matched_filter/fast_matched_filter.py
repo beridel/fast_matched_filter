@@ -108,13 +108,13 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
         else:
             impossible_dimensions = True
 
-    elif: templates.ndim == data.ndim:
+    elif templates.ndim == data.ndim:
         n_templates = np.int32(1)
         
         assert templates.shape[0] == data.shape[0] # check stations
         n_stations = np.int32(templates.shape[0])
 
-        if templates.ndim == 3
+        if templates.ndim == 3:
             assert templates.shape[1] == data.shape[1] # check components
             n_components = np.int32(templates.shape[1])
         elif templates.ndim == 2:
