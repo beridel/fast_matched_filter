@@ -94,7 +94,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
 
     if templates.ndim == 2:
         n_templates = np.int32(1)
-    elif templates.ndim == 3 and data.ndim == 2:
+    elif templates.ndim == 3 and data.ndim == 3:
         n_templates = np.int32(1)
     else:
         n_templates = np.int32(templates.shape[0])
