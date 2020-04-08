@@ -118,7 +118,7 @@ class TestFastMatchedFilter(unittest.TestCase):
     @pytest.mark.skipif(CPU_LOADED is False or GPU_LOADED is False,
                         reason="Either CPU or GPU have not run")
     def test_compare_gpu_cpu(self):
-        tolerance = 0.001
+        tolerance = 0.1
         for dataset in self.datasets:
             print("Comparing for {dataset}".format(dataset=dataset))
             if not np.allclose(self.cccsums[dataset + '_gpu'],
@@ -133,22 +133,24 @@ class TestFastMatchedFilter(unittest.TestCase):
                 atol=tolerance))
 
     def test_single(self):
+        tolerance = 0.001
         print("Checking that single template input is reformatted correctly")
         for dataset in self.datasets:
             for arch in ['cpu', 'gpu']:
                 self.assertTrue(np.allclose(
                     self.cccsums['single_' + dataset + '_' + arch], 
                     self.cccsums[dataset + '_' + arch],
-                    atol=0.0001))
+                    atol=tolerance))
                     
     def test_format(self):
         print("Checking that [traces] and [stations x components] formats are consistent")
+        tolerance = 0.001
         for dataset in self.datasets:
             for arch in ['cpu', 'gpu']:
                 self.assertTrue(np.allclose(
                     self.cccsums['traces_' + dataset + '_' + arch],
                     self.cccsums[dataset + '_' + arch],
-                    atol=0.0001))
+                    atol=tolerance))
 
 
 if __name__ == '__main__':
