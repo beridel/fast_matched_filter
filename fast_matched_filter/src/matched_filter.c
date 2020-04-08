@@ -17,7 +17,7 @@
 #define STABILITY_THRESHOLD 0.000001f
 
 //-------------------------------------------------------------------------
-void matched_filter(float *templates, float *sum_square_templates, int *moveouts,
+void matched_filter(float *templates, int *moveouts,
                     float *data, 
                     float *weights, int step, int n_samples_template, int n_samples_data,
                     int n_templates, int n_stations, int n_components, int n_corr,
@@ -28,7 +28,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
     int min_moveout, max_moveout;
     int network_offset, station_offset, cc_sum_offset;
     int *moveouts_t = NULL;
-    float *templates_t = NULL, *sum_square_templates_t = NULL, *weights_t = NULL;
+    float *templates_t = NULL,  *weights_t = NULL;
     double *csum_square_data = NULL;
 
     // compute cumulative sum of squares of data
@@ -53,7 +53,6 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
         templates_t = templates + network_offset * n_samples_template;
         moveouts_t = moveouts + network_offset;
         weights_t = weights + network_offset;
-        sum_square_templates_t = sum_square_templates + network_offset;
 
         start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
         stop_i = n_samples_data - n_samples_template - max_moveout - step;
@@ -62,7 +61,6 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
         for (i = start_i; i < stop_i; i += step) {
             cc_i = i / step;
             cc_sum[cc_sum_offset + cc_i] = network_corr(templates_t,
-                                                        sum_square_templates_t,
                                                         moveouts_t,
                                                         data + i,
                                                         csum_square_data + i + 1,
@@ -78,7 +76,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
 }
  
 //-------------------------------------------------------------------------
-float network_corr(float *templates, float *sum_square_template, int *moveouts,
+float network_corr(float *templates, int *moveouts,
                    float *data, double *csum_square_data, float *weights,
                    int n_samples_template, int n_samples_data, int n_stations, int n_components) {
 
@@ -100,7 +98,6 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
             dd = component_offset * (n_samples_data + 1) + moveouts[component_offset];
             
             cc = corrc(templates + t,
-                       sum_square_template[component_offset],
                        data + d,
                        csum_square_data + dd,
                        n_samples_template);
@@ -112,7 +109,7 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
 }
  
 //-------------------------------------------------------------------------
-float corrc(float *templates, float sum_square_template,
+float corrc(float *templates,
             float *data, double *csum_square_data,
             int n_samples_template) {
 
@@ -122,9 +119,9 @@ float corrc(float *templates, float sum_square_template,
     for (i = 0; i < n_samples_template; i++){
         numerator += templates[i] * data[i];
     }
-    denominator = sum_square_template * (float)(csum_square_data[n_samples_template] - csum_square_data[-1]);
+    denominator = sqrt((float)(csum_square_data[n_samples_template] - csum_square_data[-1]));
 
-    if (denominator > STABILITY_THRESHOLD) cc = numerator / sqrt(denominator);
+    if (denominator > STABILITY_THRESHOLD) cc = numerator / denominator;
     return cc;
 }
 

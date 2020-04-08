@@ -28,7 +28,6 @@ n_templates = size(templates, 4);
 n_samples_data = size(data, 1);
 n_corr = floor((n_samples_data - n_samples_template) / step + 1);
 
-sum_square_templates = squeeze(sum(templates .^ 2, 1));
 
 % extend the moveouts and weights matrices from 2D to 3D matrices, if necessary
 b = ones(n_components, 1);
@@ -38,6 +37,13 @@ end
 if numel(weights) ~= n_components * n_stations * n_templates
     weights = reshape(kron(weights, b), [n_components, n_stations, n_templates]);
 end
+
+for t = 1:n_templates
+    for s = 1:n_stations
+        for c = 1:n_components
+            templates(:,c,s,t) = templates(:,c,s,t) - mean(templates(:,c,s,t))
+            templates(:,c,s,t) = templates(:,c,s,t) / max(abs(templates(:,c,s,t))
+            templates(:,c,s,t) = templates(:,c,s,t) / sqrt(sum(templates(:,c,s,t) .^ 2))
 
 % input arguments (brackets indicate a non-scalar variable):
 % templates (float) [time x components x stations x templates]
@@ -57,7 +63,6 @@ end
 % cc_sum (float)
 
 templates = single(templates(:));
-sum_square_templates = single(sum_square_templates(:));
 moveouts = int32(moveouts(:));
 data = single(data(:));
 weights = single(weights(:));
@@ -70,7 +75,6 @@ n_components = int32(n_components);
 n_corr = int32(n_corr);
 
 cc_sum = matched_filter(templates, ...
-                        sum_square_templates, ...
                         moveouts, ...
                         data, ...
                         weights, ...

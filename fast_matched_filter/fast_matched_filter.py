@@ -12,6 +12,7 @@ import numpy as np
 import ctypes as ct
 import datetime as dt
 import os
+import ipdb
 
 path = os.path.join(os.path.dirname(__file__), 'lib')
 CPU_LOADED = False
@@ -21,7 +22,6 @@ try:
     _libCPU = ct.cdll.LoadLibrary(os.path.join(path, 'matched_filter_CPU.so'))
     _libCPU.matched_filter.argtypes = [
         ct.POINTER(ct.c_float),    # templates
-        ct.POINTER(ct.c_float),    # sum of squares of templates
         ct.POINTER(ct.c_int),      # moveouts
         ct.POINTER(ct.c_float),    # data
         ct.POINTER(ct.c_float),    # weights
@@ -43,7 +43,6 @@ try:
     _libGPU = ct.cdll.LoadLibrary(os.path.join(path, 'matched_filter_GPU.so'))
     _libGPU.matched_filter.argtypes = [
         ct.POINTER(ct.c_float),    # templates
-        ct.POINTER(ct.c_float),    # sum_square_templates
         ct.POINTER(ct.c_int),      # moveouts
         ct.POINTER(ct.c_float),    # data
         ct.POINTER(ct.c_float),    # stations' weights
@@ -153,18 +152,15 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
 
     n_corr = np.int32((n_samples_data - n_samples_template) / step + 1)
 
-    # compute sum of squares for templates
-    sum_square_templates = np.zeros((n_templates, n_stations, n_components),
-                                        dtype=np.float32)
+    # normalize templates so that sum of squares is 1
     for t in range(n_templates):
         for s in range(n_stations):
             for c in range(n_components):
-                #templates[t, s, c, :] -= templates[t, s, c, :].mean()
-                sum_square_templates[t, s, c] = \
-                    np.sum(templates[t, s, c, :n_samples_template] ** 2)
+                templates[t, s, c, :] -= templates[t, s, c, :].mean()
+                templates[t, s, c, :] /= np.max(np.abs(templates[t, s, c, :]))
+                templates[t, s, c, :] /= np.sqrt(np.sum(templates[t, s, c, :] ** 2))
 
     templates = np.float32(templates.flatten())
-    sum_square_templates = sum_square_templates.flatten()
 
     moveouts = np.int32(moveouts.flatten())
     weights = np.float32(weights.flatten())
@@ -177,7 +173,6 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     if arch == 'cpu':
         _libCPU.matched_filter(
             templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-            sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
             data.ctypes.data_as(ct.POINTER(ct.c_float)),
             weights.ctypes.data_as(ct.POINTER(ct.c_float)),
@@ -193,7 +188,6 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     elif arch == 'gpu':
         _libGPU.matched_filter(
                 templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-                sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
                 moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
                 data.ctypes.data_as(ct.POINTER(ct.c_float)),
                 weights.ctypes.data_as(ct.POINTER(ct.c_float)),
