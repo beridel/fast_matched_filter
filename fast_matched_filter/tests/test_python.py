@@ -6,9 +6,9 @@ import unittest
 import os
 import pytest
 import numpy as np
-import ipdb
 
 from fast_matched_filter import (matched_filter, CPU_LOADED, GPU_LOADED)
+
 
 class TestFastMatchedFilter(unittest.TestCase):
     @classmethod
@@ -70,10 +70,14 @@ class TestFastMatchedFilter(unittest.TestCase):
                 n_samples_template = dataset['templates'].shape[3]
                 n_samples_data = dataset['data'].shape[-1]
 
-                templates = dataset['templates'].reshape(n_templates, n_stations * n_components, n_samples_template)
-                weights_alt = weights.reshape(n_templates, n_stations * n_components)
-                moveouts = dataset['pads'].reshape(n_templates, n_stations * n_components)
-                data = dataset['data'].reshape(n_stations * n_components, n_samples_data)
+                templates = dataset['templates'].reshape(
+                    n_templates, n_stations * n_components, n_samples_template)
+                weights_alt = weights.reshape(
+                    n_templates, n_stations * n_components)
+                moveouts = dataset['pads'].reshape(
+                    n_templates, n_stations * n_components)
+                data = dataset['data'].reshape(
+                    n_stations * n_components, n_samples_data)
                 cccsum = matched_filter(
                     templates=templates, weights=weights_alt,
                     moveouts=moveouts, data=data,
@@ -113,11 +117,20 @@ class TestFastMatchedFilter(unittest.TestCase):
 
     @pytest.mark.skipif(CPU_LOADED is False or GPU_LOADED is False,
                         reason="Either CPU or GPU have not run")
-    def compare_results(self):
+    def test_compare_gpu_cpu(self):
+        tolerance = 0.001
         for dataset in self.datasets:
+            print("Comparing for {dataset}".format(dataset=dataset))
+            if not np.allclose(self.cccsums[dataset + '_gpu'],
+                               self.cccsums[dataset + '_cpu'], atol=tolerance):
+                print("GPU and CPU are not similar at {tolerance}. "
+                      "Maximum difference is {diff}".format(
+                            diff=np.abs(self.cccsums[dataset + '_cpu'] -
+                                        self.cccsums[dataset + '_gpu']).max(),
+                            tolerance=tolerance))
             self.assertTrue(np.allclose(
                 self.cccsums[dataset + '_gpu'], self.cccsums[dataset + '_cpu'],
-                atol=0.0001))
+                atol=tolerance))
 
     def test_single(self):
         print("Checking that single template input is reformatted correctly")
@@ -136,6 +149,7 @@ class TestFastMatchedFilter(unittest.TestCase):
                     self.cccsums['traces_' + dataset + '_' + arch],
                     self.cccsums[dataset + '_' + arch],
                     atol=0.0001))
+
 
 if __name__ == '__main__':
     unittest.main()
