@@ -6,6 +6,7 @@ import unittest
 import os
 import pytest
 import numpy as np
+import ipdb
 
 from fast_matched_filter import (matched_filter, CPU_LOADED, GPU_LOADED)
 
@@ -49,6 +50,41 @@ class TestFastMatchedFilter(unittest.TestCase):
                     continue
                 else:
                     cls.cccsums.update({name + '_' + arch: cccsum})
+
+                print("Trying to compute with single template format using the %s" % arch)
+                cccsum = matched_filter(
+                    templates=dataset['templates'][0, :, :, :], weights=weights[0, :],
+                    moveouts=dataset['pads'][0, :], data=dataset['data'],
+                    step=1, arch=arch)
+                if cccsum is None:
+                    # This should only happen if something isn't compiled
+                    print("Cannot test for architecture %s" % arch)
+                    continue
+                else:
+                    cls.cccsums.update({'single_' + name + '_' + arch: cccsum})
+                
+                print("Trying to compute with traces format using the %s" % arch)
+                n_templates = dataset['templates'].shape[0]
+                n_stations = dataset['templates'].shape[1]
+                n_components = dataset['templates'].shape[2]
+                n_samples_template = dataset['templates'].shape[3]
+                n_samples_data = dataset['data'].shape[-1]
+
+                templates = dataset['templates'].reshape(n_templates, n_stations * n_components, n_samples_template)
+                weights_alt = weights.reshape(n_templates, n_stations * n_components)
+                moveouts = dataset['pads'].reshape(n_templates, n_stations * n_components)
+                data = dataset['data'].reshape(n_stations * n_components, n_samples_data)
+                cccsum = matched_filter(
+                    templates=templates, weights=weights_alt,
+                    moveouts=moveouts, data=data,
+                    step=1, arch=arch)
+                if cccsum is None:
+                    # This should only happen if something isn't compiled
+                    print("Cannot test for architecture %s" % arch)
+                    continue
+                else:
+                    cls.cccsums.update({'traces_' + name + '_' + arch: cccsum})
+
     def test_no_nans(self):
         """Check that no strange values exist cross-correlations"""
         nan_status = {}
@@ -83,6 +119,23 @@ class TestFastMatchedFilter(unittest.TestCase):
                 self.cccsums[dataset + '_gpu'], self.cccsums[dataset + '_cpu'],
                 atol=0.0001))
 
+    def test_single(self):
+        print("Checking that single template input is reformatted correctly")
+        for dataset in self.datasets:
+            for arch in ['cpu', 'gpu']:
+                self.assertTrue(np.allclose(
+                    self.cccsums['single_' + dataset + '_' + arch], 
+                    self.cccsums[dataset + '_' + arch],
+                    atol=0.0001))
+                    
+    def test_format(self):
+        print("Checking that [traces] and [stations x components] formats are consistent")
+        for dataset in self.datasets:
+            for arch in ['cpu', 'gpu']:
+                self.assertTrue(np.allclose(
+                    self.cccsums['traces_' + dataset + '_' + arch],
+                    self.cccsums[dataset + '_' + arch],
+                    atol=0.0001))
 
 if __name__ == '__main__':
     unittest.main()
