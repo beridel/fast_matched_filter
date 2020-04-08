@@ -92,11 +92,65 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
         print("Compiled library for {} not loaded; exiting!".format(arch))
         return
 
-    n_templates = np.int32(templates.shape[0])
-    n_stations = np.int32(data.shape[0])
-    n_components = np.int32(data.shape[1])
-    n_samples_template = np.int32(templates.shape[-1])
-    n_samples_data = np.int32(data.shape[-1])
+    # figure out and check input formats
+    impossible_dimensions = False
+    if templates.ndim > data.ndim:
+        n_templates = np.int32(templates.shape[0])
+
+        assert templates.shape[1] == data.shape[0] # check stations
+        n_stations = np.int32(templates.shape[1])
+
+        if templates.ndim == 4:
+            assert templates.shape[2] == data.shape[1] # check components
+            n_components = np.int32(templates.shape[2])
+        elif templates.ndim == 3:
+            n_components = np.int32(1)
+        else:
+            impossible_dimensions = True
+
+    elif templates.ndim == data.ndim:
+        n_templates = np.int32(1)
+        
+        assert templates.shape[0] == data.shape[0] # check stations
+        n_stations = np.int32(templates.shape[0])
+
+        if templates.ndim == 3:
+            assert templates.shape[1] == data.shape[1] # check components
+            n_components = np.int32(templates.shape[1])
+        elif templates.ndim == 2:
+            n_components = np.int32(1)
+        else:
+            impossible_dimensions = True
+
+    else:
+        impossible_dimensions = True
+    
+    n_samples_template = templates.shape[-1]
+    if templates.shape != (n_templates, n_stations, n_components, n_samples_template):
+        templates = templates.reshape(n_templates, n_stations, n_components, n_samples_template)
+
+    n_samples_data = data.shape[-1]
+    if data.shape != (n_stations, n_components, n_samples_data):
+        data = data.reshape(n_stations, n_components, n_samples_data)
+
+    assert moveouts.shape == weights.shape
+
+    if moveouts.shape != (n_templates, n_stations, n_components):
+        if (n_templates * n_stations * n_components) / moveouts.size == n_components:
+            moveouts = np.repeat(moveouts, n_components).reshape(n_templates, n_stations, n_components)
+        elif (n_templates * n_stations * n_components) / moveouts.size == 1.:
+            moveouts = moveouts.reshape(n_templates, n_stations, n_components)
+
+    if weights.shape != (n_templates, n_stations, n_components):
+        if (n_templates * n_stations * n_components) / weights.size == n_components:
+            weights = np.repeat(weights, n_components).reshape(n_templates, n_stations, n_components)
+        elif (n_templates * n_stations * n_components) / weights.size == 1.:
+            weights = weights.reshape(n_templates, n_stations, n_components)
+
+    if impossible_dimensions:
+        print("Template and data dimensions are not compatible!")
+        return
+
     n_corr = np.int32((n_samples_data - n_samples_template) / step + 1)
 
     # compute sum of squares for templates
@@ -106,20 +160,12 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
         for s in range(n_stations):
             for c in range(n_components):
                 #templates[t, s, c, :] -= templates[t, s, c, :].mean()
-                sum_square_templates[t, s, c] = np.sum(
-                    templates[t, s, c, :n_samples_template] ** 2)
+                sum_square_templates[t, s, c] = \
+                    np.sum(templates[t, s, c, :n_samples_template] ** 2)
 
     templates = np.float32(templates.flatten())
     sum_square_templates = sum_square_templates.flatten()
 
-    # check shapes
-    expected_size = n_templates * n_stations * n_components
-    if expected_size / moveouts.size == n_components:
-        # moveouts are specified per station
-        moveouts = np.repeat(moveouts, n_components).reshape(n_templates, n_stations, n_components)
-    if expected_size / weights.size == n_components:
-        # weights are specified per station
-        weights = np.repeat(weights, n_components).reshape(n_templates, n_stations, n_components)
     moveouts = np.int32(moveouts.flatten())
     weights = np.float32(weights.flatten())
     step = np.int32(step)
