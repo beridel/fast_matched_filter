@@ -33,6 +33,19 @@ try:
         ct.c_size_t,               # n_components
         ct.c_size_t,               # n_corr
         ct.POINTER(ct.c_float)]    # cc_sums
+    _libCPU.matched_filter_precise.argtypes = [
+        ct.POINTER(ct.c_float),    # templates
+        ct.POINTER(ct.c_int),      # moveouts
+        ct.POINTER(ct.c_float),    # data
+        ct.POINTER(ct.c_float),    # weights
+        ct.c_size_t,               # step
+        ct.c_size_t,               # n_samples_template
+        ct.c_size_t,               # n_samples_data
+        ct.c_size_t,               # n_templates
+        ct.c_size_t,               # n_stations
+        ct.c_size_t,               # n_components
+        ct.c_size_t,               # n_corr
+        ct.POINTER(ct.c_float)]    # cc_sums
     CPU_LOADED = True
 except OSError:
     print("Matched-filter CPU is not compiled! Should be here: {}".
@@ -81,6 +94,8 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     """
 
     if arch.lower() == 'cpu' and CPU_LOADED is False:
+        loaded = False
+    if arch.lower() == 'precise' and CPU_LOADED is False:
         loaded = False
     elif arch.lower() == 'gpu' and GPU_LOADED is False:
         loaded = False
@@ -172,6 +187,21 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
 
     if arch == 'cpu':
         _libCPU.matched_filter(
+            templates.ctypes.data_as(ct.POINTER(ct.c_float)),
+            moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
+            data.ctypes.data_as(ct.POINTER(ct.c_float)),
+            weights.ctypes.data_as(ct.POINTER(ct.c_float)),
+            step,
+            n_samples_template,
+            n_samples_data,
+            n_templates,
+            n_stations,
+            n_components,
+            n_corr,
+            cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
+
+    if arch == 'cpu':
+        _libCPU.matched_filter_precise(
             templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
             data.ctypes.data_as(ct.POINTER(ct.c_float)),
