@@ -56,7 +56,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
         sum_square_templates_t = sum_square_templates + network_offset;
 
         start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
-        stop_i = n_samples_data - n_samples_template - max_moveout - step;
+        stop_i = n_samples_data - n_samples_template - max_moveout;
 
 #pragma omp parallel for private(i, cc_i)
         for (i = start_i; i < stop_i; i += step) {
