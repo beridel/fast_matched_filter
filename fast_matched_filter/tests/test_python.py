@@ -118,7 +118,7 @@ class TestFastMatchedFilter(unittest.TestCase):
     @pytest.mark.skipif(CPU_LOADED is False or GPU_LOADED is False,
                         reason="Either CPU or GPU have not run")
     def test_compare_gpu_cpu(self):
-        tolerance = 0.1
+        tolerance = 0.01
         for dataset in self.datasets:
             print("Comparing for {dataset}".format(dataset=dataset))
             if not np.allclose(self.cccsums[dataset + '_gpu'],
