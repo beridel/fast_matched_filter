@@ -83,10 +83,14 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     input:
     templates ---------- 4D numpy array [templates x stations x
                          components x time]
+                         or 3D numpy array [templates x traces x time]
     moveouts ----------- 3D numpy array [templates x stations x components]
+                         or 2D numpy array [templates x traces]
     weights ------------ 3D numpy array [templates x stations x components]
+                         or 2D numpy array [templates x traces]
     data --------------- 3D numpy array [stations x components x
                          time]
+                         or 2D numpy array [traces x time]
     step --------------- interval between correlations (in samples)
     arch --------------- 'cpu' or 'gpu' implementation
 

@@ -49,8 +49,9 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
     //------------------------------------------------
     int count_template = (n_samples_template / WARPSIZE + 1) * WARPSIZE;
     extern __shared__ float shared[];
-    float *templates_s = &shared[0];
-    float *data_s = &shared[count_template];
+    float *ss_template = &shared[0];
+    float *templates_s = &shared[sizeof(float)];
+    float *data_s = &shared[count_template+sizeof(float)];
 
     // 1 block processes one channel to blockDim.x / step different positions in time
     idx = blockIdx.x/n_stations * blockDim.x + chunk_offset;
@@ -73,6 +74,9 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
 
             // load template and data into shared memory
             t_idx = threadIdx.x;
+            if (t_idx == 0){
+                ss_template[0] = sum_square_template[sum_square_template_offset];
+            }
             while(t_idx < n_samples_template) {
                 templates_s[t_idx] = templates[templates_offset + t_idx];
                 if ((first_sample_trace + t_idx) < n_samples_data) data_s[t_idx] = data[data_offset + t_idx];
@@ -93,10 +97,11 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
                     numerator += data_sample * templates_s[i];
                     sum_square_data += data_sample * data_sample; 
                 }
-                denominator = sum_square_data * sum_square_template[sum_square_template_offset];
+                //denominator = sum_square_data * sum_square_template[sum_square_template_offset];
+                denominator = sum_square_data * ss_template[0];
                 if (cc_mat_offset < (chunk_size * n_stations * n_components)){
                     // check that this thread is not ouf of the chunk's bounds
-                    if (denominator > STABILITY_THRESHOLD) cc_mat[cc_mat_offset] = numerator * rsqrtf(sum_square_data * sum_square_template[sum_square_template_offset]);
+                    if (denominator > STABILITY_THRESHOLD) cc_mat[cc_mat_offset] = numerator * rsqrtf(denominator);
                 }
             }
         }
@@ -217,7 +222,7 @@ void matched_filter(float *templates, float *sum_square_templates,
             // calculate the space required in the shared memory
             int count_template = (n_samples_template / WARPSIZE + 1) * WARPSIZE;
             int count_data = ((n_samples_template + BLOCKSIZE * step) / WARPSIZE + 1) * WARPSIZE;
-            int sharedMem = (count_template + count_data) * sizeof(float);
+            int sharedMem = (count_template + count_data + 1) * sizeof(float);
             if (sharedMem > maxSharedMem) {
                 int new_step = (maxSharedMem/sizeof(float) - 2 * n_samples_template - 2 * WARPSIZE) / BLOCKSIZE;
                 int new_length = maxSharedMem/sizeof(float) - count_data - WARPSIZE;
