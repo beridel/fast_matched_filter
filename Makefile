@@ -20,7 +20,7 @@ mex_extension=mexa64
 all: $(libdir)/matched_filter_GPU.so $(libdir)/matched_filter_CPU.so $(maindir)/matched_filter.$(mex_extension)
 python_cpu: $(libdir)/matched_filter_CPU.so
 python_gpu: $(libdir)/matched_filter_GPU.so 
-matlab: $(maindir)/matched_filter.$(mex_extension)
+matlab: $(maindir)/matched_filter.$(mex_extension) $(maindir)/matched_filter_precise.$(mex_extension)
 .SUFFIXES: .c .cu
 
 # GPU FLAGS
@@ -50,6 +50,8 @@ $(libdir)/matched_filter_CPU.so: $(srcdir)/matched_filter.c
 
 # build for Matlab
 $(maindir)/matched_filter.$(mex_extension): $(srcdir)/matched_filter_mex.c $(srcdir)/matched_filter.c
+	$(MEX) CC=$(CC) COPTIMFLAGS="$(COPTIMFLAGS_MEX)" CFLAGS="$(CFLAGS_MEX)" LDFLAGS="$(LDFLAGS_MEX)" -output $@ $^
+$(maindir)/matched_filter_precise.$(mex_extension): $(srcdir)/matched_filter_precise_mex.c $(srcdir)/matched_filter.c
 	$(MEX) CC=$(CC) COPTIMFLAGS="$(COPTIMFLAGS_MEX)" CFLAGS="$(CFLAGS_MEX)" LDFLAGS="$(LDFLAGS_MEX)" -output $@ $^
 
 clean:

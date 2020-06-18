@@ -15,11 +15,12 @@
 %% define network and waveforms
 sampling_rate = 50;
 n_templates = 5;
-n_stations = 10;
+n_stations = 5;
 n_components = 3;
 template_duration = 8;
 data_duration = 86400;
 step = 1;
+arch = 'cpu'; % can be 'cpu' or 'precise'
 
 % determines the time (in seconds) within the data to extract a template
 template_start_times = round(rand(1, n_templates) * data_duration / 2) + 1;
@@ -61,11 +62,16 @@ for t = 1:n_templates
     end
 end
 
-weights = ones(n_stations, n_templates) / n_stations;
+weights = ones(n_stations, n_components, n_templates) / (n_stations*n_components);
 
 %% C matched filter
 tic;
-cc_sum = fast_matched_filter(templates, moveouts, weights, data, step);
+cc_sum = fast_matched_filter(templates, ...
+                             moveouts, ...
+                             weights, ...
+                             data, ...
+                             step, ...
+                             arch);
 fprintf('Done in %.2f seconds!\n', toc);
 
 %% Check the accuracy 
@@ -74,6 +80,6 @@ for t =1:n_templates
     fprintf('Template %i was extracted from the synthetic data at time %.1f s.\n', t, template_start_times(1,t));
     max_cc = max(cc_sum(:,t));
     time_max_cc = (find(cc_sum(:,t) == max_cc) - 1) / sampling_rate * step;
-    fprintf('Maximum correlation (%.2f) found at time %.1f s.\n', max_cc, time_max_cc);
+    fprintf('Maximum correlation (%.3f) found at time %.1f s.\n', max_cc, time_max_cc);
 end
 

@@ -93,6 +93,8 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
                          or 2D numpy array [traces x time]
     step --------------- interval between correlations (in samples)
     arch --------------- 'cpu' or 'gpu' implementation
+                         new: 'precise' for a more precise but slower
+                         CPU implementation
 
     NB: Mean and trend MUST be removed from template and data traces before
         using this function
@@ -176,14 +178,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
     n_corr = np.int32((n_samples_data - n_samples_template) / step + 1)
 
     # compute sum of squares for templates
-    sum_square_templates = np.zeros((n_templates, n_stations, n_components),
-                                        dtype=np.float32)
-    for t in range(n_templates):
-        for s in range(n_stations):
-            for c in range(n_components):
-                #templates[t, s, c, :] -= templates[t, s, c, :].mean()
-                sum_square_templates[t, s, c] = \
-                    np.sum(templates[t, s, c, :n_samples_template] ** 2)
+    sum_square_templates = np.sum(templates**2, axis=-1).astype(np.float32)
 
     templates = np.float32(templates.flatten())
     sum_square_templates = sum_square_templates.flatten()
