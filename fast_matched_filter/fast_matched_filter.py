@@ -148,7 +148,11 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
 
     else:
         impossible_dimensions = True
-    
+
+    if impossible_dimensions:
+        print("Template and data dimensions are not compatible!")
+        return
+   
     n_samples_template = templates.shape[-1]
     if templates.shape != (n_templates, n_stations, n_components, n_samples_template):
         templates = templates.reshape(n_templates, n_stations, n_components, n_samples_template)
@@ -170,10 +174,6 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
             weights = np.repeat(weights, n_components).reshape(n_templates, n_stations, n_components)
         elif (n_templates * n_stations * n_components) / weights.size == 1.:
             weights = weights.reshape(n_templates, n_stations, n_components)
-
-    if impossible_dimensions:
-        print("Template and data dimensions are not compatible!")
-        return
 
     n_corr = np.int32((n_samples_data - n_samples_template) / step + 1)
 
