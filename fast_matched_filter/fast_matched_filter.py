@@ -78,7 +78,7 @@ except OSError:
     GPU_LOADED = False
 
 
-def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
+def matched_filter(templates, moveouts, weights, data, step, arch='cpu', verbose=1):
     """
     input:
     templates ---------- 4D numpy array [templates x stations x
@@ -92,9 +92,18 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
                          time]
                          or 2D numpy array [traces x time]
     step --------------- interval between correlations (in samples)
-    arch --------------- 'cpu' or 'gpu' implementation
+    arch --------------- 'cpu', 'precise' or 'gpu' implementation
                          new: 'precise' for a more precise but slower
                          CPU implementation
+    verbose ------------ integer: 0, 1 or 2, default to 1.
+                         Controls the verbosity level at the end of this
+                         routine when checking zeros in the time series
+                         of correlation coefficients (CCs).
+                         0: No messages.
+                         1: Check zeros on the first template's CCs (recommended).
+                         2: Check zeros on each template's CCs. It can be useful
+                         for troubleshooting but in general this would
+                         print too many messages.
 
     NB: Mean and trend MUST be removed from template and data traces before
         using this function
@@ -240,17 +249,35 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu'):
                 cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
 
     cc_sums = cc_sums.reshape((n_templates, n_corr))
-    zeros = np.sum(cc_sums[0, :int(n_corr - moveouts.max() / step)] == 0.)
-    if zeros > 10:
-        print("{} correlation computations were skipped. Can be caused by"
-              " zeros in data, or too low amplitudes (try to increase the "
-              "gain).".format(zeros))
+    # check for zeros in the CC time series more or less thoroughly
+    # depending on the value of 'verbose'
+    if (verbose < 0) or (verbose > 2):
+        print("verbose should be 0, 1 or 2. Set it to "
+              "the default value: 1")
+        verbose = 1
+    if verbose == 0:
+        pass
+    elif verbose == 1:
+        # only check the first template
+        zeros = np.sum(
+                cc_sums[0:1, :int(n_corr - moveouts.max()/step)] == 0., axis=-1)
+    else:
+        # check all templates
+        zeros = np.sum(
+                cc_sums[:, :int(n_corr - moveouts.max()/step)] == 0., axis=-1)
+    if verbose != 0:
+        for t in range(zeros.shape[0]):
+            if zeros[t] > 10:
+                print("{} correlation computations were skipped on the {:d}-th "
+                      "template. Can be caused by zeros in data, or too low "
+                      "amplitudes (try to increase the gain).".
+                      format(zeros[t], t))
     return cc_sums
 
 
 def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                         template_duration=10, data_duration=86400,
-                        sampling_rate=100, step=1, arch='cpu'):
+                        sampling_rate=100, step=1, arch='cpu', verbose=1):
     """
     output: templates, moveouts, data, step, cc_sum
     """
@@ -318,7 +345,8 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                             weights,
                             data,
                             step,
-                            arch=arch)
+                            arch=arch,
+                            verbose=verbose)
     stop_time = dt.datetime.now()
 
     print("Matched filter ({}) for {} templates on {} stations/{} "
