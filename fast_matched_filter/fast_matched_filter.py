@@ -251,9 +251,9 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', check_z
     cc_sums = cc_sums.reshape((n_templates, n_corr))
     # check for zeros in the CC time series more or less thoroughly
     # depending on the value of 'check_zeros'
-    if (check_zeros != False) or (check_zeros != 'first') or (check_zeros != 'all'):
+    if (check_zeros != False) and (check_zeros != 'first') and (check_zeros != 'all'):
         print("check_zeros should be False, 'first', or 'all'. Set it to "
-              "the default value: 1")
+              "the default value: 'first'")
         check_zeros = 'first'
     if not check_zeros:
         pass
@@ -265,7 +265,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', check_z
         # check all templates
         zeros = np.sum(
                 cc_sums[:, :int(n_corr - moveouts.max()/step)] == 0., axis=-1)
-    if check_zeros == 'all':
+    if check_zeros:
         for t in range(zeros.shape[0]):
             if zeros[t] > 10:
                 print("{} correlation computations were skipped on the {:d}-th "
