@@ -95,7 +95,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', check_z
     arch --------------- 'cpu', 'precise' or 'gpu' implementation
                          new: 'precise' for a more precise but slower
                          CPU implementation
-    verbose ------------ integer: 0, 1 or 2, default to 1.
+    check_zeros ------------ integer: 0, 1 or 2, default to 1.
                          Controls the verbosity level at the end of this
                          routine when checking zeros in the time series
                          of correlation coefficients (CCs).
@@ -250,14 +250,14 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', check_z
 
     cc_sums = cc_sums.reshape((n_templates, n_corr))
     # check for zeros in the CC time series more or less thoroughly
-    # depending on the value of 'verbose'
-    if (verbose != False) or (verbose != 'first') or (verbose != 'all'):
-        print("verbose should be False, 'first', or 'all'. Set it to "
+    # depending on the value of 'check_zeros'
+    if (check_zeros != False) or (check_zeros != 'first') or (check_zeros != 'all'):
+        print("check_zeros should be False, 'first', or 'all'. Set it to "
               "the default value: 1")
-        verbose = 'first'
-    if not verbose:
+        check_zeros = 'first'
+    if not check_zeros:
         pass
-    elif verbose == 'first':
+    elif check_zeros == 'first':
         # only check the first template
         zeros = np.sum(
                 cc_sums[0:1, :int(n_corr - moveouts.max()/step)] == 0., axis=-1)
@@ -265,7 +265,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', check_z
         # check all templates
         zeros = np.sum(
                 cc_sums[:, :int(n_corr - moveouts.max()/step)] == 0., axis=-1)
-    if verbose == 'all':
+    if check_zeros == 'all':
         for t in range(zeros.shape[0]):
             if zeros[t] > 10:
                 print("{} correlation computations were skipped on the {:d}-th "
@@ -277,7 +277,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', check_z
 
 def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                         template_duration=10, data_duration=86400,
-                        sampling_rate=100, step=1, arch='cpu', verbose='first'):
+                        sampling_rate=100, step=1, arch='cpu', check_zeros='first'):
     """
     output: templates, moveouts, data, step, cc_sum
     """
@@ -346,7 +346,7 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                             data,
                             step,
                             arch=arch,
-                            verbose=verbose)
+                            check_zeros=check_zeros)
     stop_time = dt.datetime.now()
 
     print("Matched filter ({}) for {} templates on {} stations/{} "
