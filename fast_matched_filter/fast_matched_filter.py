@@ -78,7 +78,7 @@ except OSError:
     GPU_LOADED = False
 
 
-def matched_filter(templates, moveouts, weights, data, step, arch='cpu', verbose=1):
+def matched_filter(templates, moveouts, weights, data, step, arch='cpu', check_zeros='first'):
     """
     input:
     templates ---------- 4D numpy array [templates x stations x
@@ -99,9 +99,9 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', verbose
                          Controls the verbosity level at the end of this
                          routine when checking zeros in the time series
                          of correlation coefficients (CCs).
-                         0: No messages.
-                         1: Check zeros on the first template's CCs (recommended).
-                         2: Check zeros on each template's CCs. It can be useful
+                         False: No messages.
+                         'first': Check zeros on the first template's CCs (recommended).
+                         'all': Check zeros on each template's CCs. It can be useful
                          for troubleshooting but in general this would
                          print too many messages.
 
@@ -251,13 +251,13 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', verbose
     cc_sums = cc_sums.reshape((n_templates, n_corr))
     # check for zeros in the CC time series more or less thoroughly
     # depending on the value of 'verbose'
-    if (verbose < 0) or (verbose > 2):
-        print("verbose should be 0, 1 or 2. Set it to "
+    if (verbose != False) or (verbose != 'first') or (verbose != 'all':
+        print("verbose should be False, 'first', or 'all'. Set it to "
               "the default value: 1")
-        verbose = 1
-    if verbose == 0:
+        verbose = 'first'
+    if not verbose:
         pass
-    elif verbose == 1:
+    elif verbose == 'first':
         # only check the first template
         zeros = np.sum(
                 cc_sums[0:1, :int(n_corr - moveouts.max()/step)] == 0., axis=-1)
@@ -265,7 +265,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', verbose
         # check all templates
         zeros = np.sum(
                 cc_sums[:, :int(n_corr - moveouts.max()/step)] == 0., axis=-1)
-    if verbose != 0:
+    if verbose == 'all':
         for t in range(zeros.shape[0]):
             if zeros[t] > 10:
                 print("{} correlation computations were skipped on the {:d}-th "
@@ -277,7 +277,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', verbose
 
 def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                         template_duration=10, data_duration=86400,
-                        sampling_rate=100, step=1, arch='cpu', verbose=1):
+                        sampling_rate=100, step=1, arch='cpu', verbose='first'):
     """
     output: templates, moveouts, data, step, cc_sum
     """
