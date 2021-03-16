@@ -251,7 +251,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu', check_z
     cc_sums = cc_sums.reshape((n_templates, n_corr))
     # check for zeros in the CC time series more or less thoroughly
     # depending on the value of 'verbose'
-    if (verbose != False) or (verbose != 'first') or (verbose != 'all':
+    if (verbose != False) or (verbose != 'first') or (verbose != 'all'):
         print("verbose should be False, 'first', or 'all'. Set it to "
               "the default value: 1")
         verbose = 'first'
