@@ -90,7 +90,7 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
             __syncthreads(); // make sure the waveforms are read before keep going
 
             // calculate correlation coefficient
-            if (last_sample_trace <= n_samples_data){
+            if (last_sample_trace < n_samples_data){
                 // if not, corresponds to an ill-defined CC with some samples out of the bounds
                 for(i = 0; i < n_samples_template; i++) {
                     data_sample = data_s[i + threadIdx.x * step];

@@ -56,7 +56,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
         sum_square_templates_t = sum_square_templates + network_offset;
 
         start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
-        stop_i = 1 + (n_samples_data - n_samples_template - max_moveout);
+        stop_i = n_samples_data - n_samples_template - max_moveout;
 
 #pragma omp parallel for private(i, cc_i)
         for (i = start_i; i < stop_i; i += step) {
@@ -122,7 +122,7 @@ float corrc(float *templates, float sum_square_template,
     for (i = 0; i < n_samples_template; i++){
         numerator += templates[i] * data[i];
     }
-    denominator = sum_square_template * (float)(csum_square_data[n_samples_template - 1] - csum_square_data[-1]);
+    denominator = sum_square_template * (float)(csum_square_data[n_samples_template] - csum_square_data[-1]);
 
     if (denominator > STABILITY_THRESHOLD) cc = numerator / sqrt(denominator);
     return cc;
@@ -204,7 +204,7 @@ void matched_filter_precise(float *templates, float *sum_square_templates, int *
         sum_square_templates_t = sum_square_templates + network_offset;
 
         start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
-        stop_i = 1 + (n_samples_data - n_samples_template - max_moveout);
+        stop_i = n_samples_data - n_samples_template - max_moveout;
 
 #pragma omp parallel for private(i, cc_i)
         for (i = start_i; i < stop_i; i += step) {
@@ -269,6 +269,6 @@ float corrc_precise(float *templates, float sum_square_template,
     }
     denominator = sqrt(sum_square_template * sum_square_data);
 
-    if (denominator > STABILITY_THRESHOLD){ cc = numerator / denominator; }
+    if (denominator > STABILITY_THRESHOLD) cc = numerator / denominator;
     return cc;
 }
