@@ -56,7 +56,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
         sum_square_templates_t = sum_square_templates + network_offset;
 
         start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
-        stop_i = 1 + (n_samples_data - n_samples_template - max_moveout);
+        stop_i = 1 + (n_samples_data - n_samples_template); // - max_moveout);
 
 #pragma omp parallel for private(i, cc_i)
         for (i = start_i; i < stop_i; i += step) {
@@ -70,7 +70,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
                                                         n_samples_template,
                                                         n_samples_data,
                                                         n_stations,
-                                                        n_components);
+                                                        n_components, i);
         }
     }
 
@@ -80,7 +80,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
 //-------------------------------------------------------------------------
 float network_corr(float *templates, float *sum_square_template, int *moveouts,
                    float *data, double *csum_square_data, float *weights,
-                   int n_samples_template, int n_samples_data, int n_stations, int n_components) {
+                   int n_samples_template, int n_samples_data, int n_stations, int n_components, int i) {
 
     int s, c, d, dd, t;
     int station_offset, component_offset;
@@ -94,6 +94,8 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
         for (c = 0; c < n_components; c++) {
             component_offset = station_offset + c;
             if (weights[component_offset] == 0) continue;
+
+            if ((i + moveouts[component_offset]) > n_samples_data - n_samples_template) continue;
 
             t  = component_offset * n_samples_template;
             d  = component_offset * n_samples_data + moveouts[component_offset];
@@ -204,7 +206,7 @@ void matched_filter_precise(float *templates, float *sum_square_templates, int *
         sum_square_templates_t = sum_square_templates + network_offset;
 
         start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
-        stop_i = 1 + (n_samples_data - n_samples_template - max_moveout);
+        stop_i = 1 + (n_samples_data - n_samples_template); // - max_moveout);
 
 #pragma omp parallel for private(i, cc_i)
         for (i = start_i; i < stop_i; i += step) {
@@ -217,15 +219,16 @@ void matched_filter_precise(float *templates, float *sum_square_templates, int *
                                                                 n_samples_template,
                                                                 n_samples_data,
                                                                 n_stations,
-                                                                n_components);
+                                                                n_components, i);
         }
     }
 }
 
 //-------------------------------------------------------------------------
-float network_corr_precise(float *templates, float *sum_square_template, int *moveouts,
-                   float *data, float *weights,
-                   int n_samples_template, int n_samples_data, int n_stations, int n_components) {
+float network_corr_precise(
+    float *templates, float *sum_square_template, int *moveouts,
+    float *data, float *weights, int n_samples_template, int n_samples_data, 
+    int n_stations, int n_components, int i) {
 
     int s, c, d, dd, t;
     int station_offset, component_offset;
@@ -239,6 +242,8 @@ float network_corr_precise(float *templates, float *sum_square_template, int *mo
         for (c = 0; c < n_components; c++) {
             component_offset = station_offset + c;
             if (weights[component_offset] == 0) continue;
+
+            if ((i + moveouts[component_offset]) > n_samples_data - n_samples_template) continue;
 
             t  = component_offset * n_samples_template;
             d  = component_offset * n_samples_data + moveouts[component_offset];
