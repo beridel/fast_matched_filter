@@ -111,7 +111,9 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
                 denominator = sum_square_data * ss_template[0];
                 if (cc_mat_offset < (chunk_size * n_stations * n_components)){
                     // check that this thread is not ouf of the chunk's bounds
-                    if (denominator > STABILITY_THRESHOLD) cc_mat[cc_mat_offset] = numerator * rsqrtf(denominator);
+                    if (denominator > STABILITY_THRESHOLD) {
+                        cc_mat[cc_mat_offset] = numerator * rsqrtf(denominator);
+                    }
                 }
             }
         }
@@ -132,7 +134,9 @@ __global__ void sum_cc(float *cc_mat, float *cc_sum, float *weights,
         float *cc_mat_offset;
 
         cc_mat_offset = cc_mat + i * n_stations * n_components;
-        for (ch = 0; ch < (n_stations * n_components); ch++) cc_sum[i] += cc_mat_offset[ch] * weights[ch];
+        for (ch = 0; ch < (n_stations * n_components); ch++){
+            cc_sum[i] += cc_mat_offset[ch] * weights[ch];
+        }
     }
 }
 
@@ -252,7 +256,8 @@ void matched_filter(float *templates, float *sum_square_templates,
             for (int i = 0; i < (n_stations * n_components); i++) {
                 max_moveout = (moveouts_t[i] > max_moveout) ? moveouts_t[i] : max_moveout;
             }
-            n_corr_t = (n_samples_data - n_samples_template - max_moveout) / step + 1;
+            // n_corr_t = (n_samples_data - n_samples_template - max_moveout) / step + 1;
+            n_corr_t = (n_samples_data - n_samples_template) / step + 1;
 
             // local pointers on the device
             templates_d_t = templates_d + t_thread * n_samples_template * n_stations * n_components;
