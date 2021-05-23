@@ -15,4 +15,4 @@ del fast_matched_filter
 
 __all__ = [matched_filter, test_matched_filter]
 
-__version__ = '1.3.1'
+__version__ = '1.4.0'
