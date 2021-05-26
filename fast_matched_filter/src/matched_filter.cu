@@ -256,8 +256,7 @@ void matched_filter(float *templates, float *sum_square_templates,
             for (int i = 0; i < (n_stations * n_components); i++) {
                 max_moveout = (moveouts_t[i] > max_moveout) ? moveouts_t[i] : max_moveout;
             }
-            // n_corr_t = (n_samples_data - n_samples_template - max_moveout) / step + 1;
-            n_corr_t = (n_samples_data - n_samples_template) / step + 1;
+            n_corr_t = (n_samples_data - n_samples_template - max_moveout) / step + 1;
 
             // local pointers on the device
             templates_d_t = templates_d + t_thread * n_samples_template * n_stations * n_components;
@@ -275,6 +274,11 @@ void matched_filter(float *templates, float *sum_square_templates,
                 else{
                     cs = chunk_size;
                 }
+                if (cs <= 0){
+                    // Reached end of valid correlation space.
+                    continue;
+                }
+                printf("cs: %i\n", cs);
                 //sizeof_cc_mat = sizeof(float) * cs * n_stations * n_components;
                 size_t sizeof_cc_sum_chunk = sizeof(float) * cs;
 
