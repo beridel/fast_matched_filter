@@ -106,11 +106,11 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
                          for troubleshooting but in general this would
                          print too many messages.
     normalize ---------- Either "short" or "full" - full is slower but removes
-                         the mean of the data at every correlation. Naive
+                         the mean of the data at every correlation. Short
                          is the original implementation.
 
-    NB: Mean and trend MUST be removed from template and data traces before
-        using this function
+    NB: When using normalize="short", the templates and the data sliding windows
+        must have zero means (high-pass filter the data if necessary).
 
     output:
     2D numpy array (np.float32) [templates x time (at step defined interval)]
