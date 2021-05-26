@@ -270,15 +270,11 @@ void matched_filter(float *templates, float *sum_square_templates,
                 // make sure the chunk is not going out of bounds
                 if (chunk_offset + chunk_size > n_corr_t){
                     cs = n_corr_t - chunk_offset;
+                    if (cs <= 0) continue;
                 }
                 else{
                     cs = chunk_size;
                 }
-                if (cs <= 0){
-                    // Reached end of valid correlation space.
-                    continue;
-                }
-                printf("cs: %i\n", cs);
                 //sizeof_cc_mat = sizeof(float) * cs * n_stations * n_components;
                 size_t sizeof_cc_sum_chunk = sizeof(float) * cs;
 
