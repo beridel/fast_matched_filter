@@ -79,7 +79,7 @@ except OSError:
 
 
 def matched_filter(templates, moveouts, weights, data, step, arch='cpu', 
-                   check_zeros='first', normalize="naive"):
+                   check_zeros='first', normalize='short'):
     """
     input:
     templates ---------- 4D numpy array [templates x stations x
@@ -105,7 +105,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
                          'all': Check zeros on each template's CCs. It can be useful
                          for troubleshooting but in general this would
                          print too many messages.
-    normalize ---------- Either "naive" or "full" - full is slower but removes
+    normalize ---------- Either "short" or "full" - full is slower but removes
                          the mean of the data at every correlation. Naive
                          is the original implementation.
 
@@ -115,7 +115,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
     output:
     2D numpy array (np.float32) [templates x time (at step defined interval)]
     """
-    assert normalize in ("naive", "full"), "Only know naive or full normalization methods"
+    assert normalize in ("short", "full"), "Only know short or full normalization methods"
     if normalize == "full":
         normalize = 1
         assert arch != "cpu", "Full normalization not supported with cpu arch - try arch=precise"
