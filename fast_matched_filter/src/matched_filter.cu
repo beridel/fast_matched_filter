@@ -36,13 +36,13 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
                              size_t step, size_t n_samples_template, size_t n_samples_data,
                              size_t n_stations, size_t n_components,
                              int chunk_offset, int chunk_size,
-                             float *cc_mat) {
+                             float *cc_mat, int normalize) {
   
     // each thread matches the template to one time in the data
     int idx, first_sample_block, first_sample_trace, last_sample_trace; // sample's index
     int i, s, c; // counters
     int data_offset, templates_offset, sum_square_template_offset, cc_mat_offset;
-    float numerator, denominator, sum_square_data;
+    float numerator, denominator, sum_square_data, mean_data;
     float data_sample;
     int t_idx;
 
@@ -70,6 +70,7 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
 
             // initialize sums
             sum_square_data = 0.0f;
+            mean_data = 0.0f;
             numerator = 0.0f;
 
             // load template and data into shared memory
@@ -90,18 +91,29 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
             __syncthreads(); // make sure the waveforms are read before keep going
 
             // calculate correlation coefficient
-            if (last_sample_trace < n_samples_data){
+            if (last_sample_trace <= n_samples_data){
                 // if not, corresponds to an ill-defined CC with some samples out of the bounds
+                // Calculate the mean if fully normalising
+                if (normalize > 0){
+                    for (i = 0; i < n_samples_template; i++){
+                        mean_data += data_s[i + threadIdx.x * step];
+                    }
+                    mean_data /= n_samples_template;
+                }
+
                 for(i = 0; i < n_samples_template; i++) {
-                    data_sample = data_s[i + threadIdx.x * step];
+                    data_sample = data_s[i + threadIdx.x * step] - mean_data;
                     numerator += data_sample * templates_s[i];
-                    sum_square_data += data_sample * data_sample; 
+                    sum_square_data += data_sample * data_sample;
+                    
                 }
                 //denominator = sum_square_data * sum_square_template[sum_square_template_offset];
                 denominator = sum_square_data * ss_template[0];
                 if (cc_mat_offset < (chunk_size * n_stations * n_components)){
                     // check that this thread is not ouf of the chunk's bounds
-                    if (denominator > STABILITY_THRESHOLD) cc_mat[cc_mat_offset] = numerator * rsqrtf(denominator);
+                    if (denominator > STABILITY_THRESHOLD) {
+                        cc_mat[cc_mat_offset] = numerator * rsqrtf(denominator);
+                    }
                 }
             }
         }
@@ -122,7 +134,9 @@ __global__ void sum_cc(float *cc_mat, float *cc_sum, float *weights,
         float *cc_mat_offset;
 
         cc_mat_offset = cc_mat + i * n_stations * n_components;
-        for (ch = 0; ch < (n_stations * n_components); ch++) cc_sum[i] += cc_mat_offset[ch] * weights[ch];
+        for (ch = 0; ch < (n_stations * n_components); ch++){
+            cc_sum[i] += cc_mat_offset[ch] * weights[ch];
+        }
     }
 }
 
@@ -131,7 +145,7 @@ void matched_filter(float *templates, float *sum_square_templates,
                     int *moveouts, float *data, float *weights, size_t step,
                     size_t n_samples_template, size_t n_samples_data,
                     size_t n_templates, size_t n_stations, size_t n_components, size_t n_corr,
-                    float *cc_sums) {
+                    float *cc_sums, int normalize) {
 
     int t_global = -1;
     int nGPUs;
@@ -256,6 +270,7 @@ void matched_filter(float *templates, float *sum_square_templates,
                 // make sure the chunk is not going out of bounds
                 if (chunk_offset + chunk_size > n_corr_t){
                     cs = n_corr_t - chunk_offset;
+                    if (cs <= 0) continue;
                 }
                 else{
                     cs = chunk_size;
@@ -281,7 +296,8 @@ void matched_filter(float *templates, float *sum_square_templates,
                                                     n_components,
                                                     chunk_offset,
                                                     cs,
-                                                    cc_mat_d);
+                                                    cc_mat_d,
+                                                    normalize);
 
                 // return an error if something happened in the kernel (and crash the program)
                 gpuErrchk(cudaPeekAtLastError());
