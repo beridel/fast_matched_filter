@@ -35,7 +35,7 @@ or simply:<br>
 
     pip install git+https://github.com/beridel/fast_matched_filter
 
-### Running
+## Running
 
 Python: Both CPU and GPU versions are called with the matched_filter function.<br>
 If FMF was installed with pip:
