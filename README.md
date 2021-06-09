@@ -3,8 +3,8 @@ An efficient seismic matched-filter search for both CPU and GPU architectures. D
 
 If you use FMF in research to be published, please reference the following article: Beaucé, Eric, W. B. Frank, and Alexey Romanenko (2017). Fast matched-filter (FMF): an efficient seismic matched-filter search for both CPU and GPU architectures. _Seismological Research Letters_, doi: [10.1785/0220170181](https://doi.org/10.1785/0220170181)
 
-FMF is available at https://github.com/beridel/fast_matched_filter
-and can be downloaded with:<br>
+FMF is available at https://github.com/beridel/fast_matched_filter and can be downloaded with:<br>
+
     git clone https://github.com/beridel/fast_matched_filter.git
 
 ## Required software/hardware
