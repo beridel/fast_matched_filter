@@ -47,14 +47,14 @@ with open('README.md') as f:
     long_description = f.read()
 
 setup(name='FastMatchedFilter',
-      version='1.3.0',
+      version='1.4.0',
       description='Fast time-domain normalised cross-correlation for '
                   'CPU & GPU',
       long_description=long_description,
       classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: GPL License',
-        'Programming Language :: Python :: 2.7, 3.5, 3.6',
+        'Programming Language :: Python :: 2.7, 3.5, 3.6, 3.7, 3.8',
         'Topic :: Seismology :: Matched Filter',
       ],
       url='https://github.com/beridel/fast_matched_filter',
