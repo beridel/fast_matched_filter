@@ -16,6 +16,7 @@ and can be downloaded with:<br>
 
 ### From source
 A simple make + whichever implementation does the trick. Possible make commands are:<br>
+
     make python_cpu
     make python_gpu
     make matlab
@@ -26,9 +27,12 @@ NB: Matlab compiles via mex, which needs to be setup before running. Any compile
 ### Using pip
 
 Installation as a Python module is possible via pip (which supports clean uninstalling):<br>
+
     python setup.py build_ext
     pip install .
+
 or simply:<br>
+
     pip install git+https://github.com/beridel/fast_matched_filter
 
 ### Running
