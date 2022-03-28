@@ -18,15 +18,13 @@
 
 //-------------------------------------------------------------------------
 void matched_filter(float *templates, float *sum_square_templates, int *moveouts,
-                    float *data, 
-                    float *weights, int step, int n_samples_template, int n_samples_data,
-                    int n_templates, int n_stations, int n_components, int n_corr,
-                    float *cc_sum) { // output variable
+                    float *data, float *weights, size_t step, size_t n_samples_template,
+                    size_t n_samples_data, size_t n_templates, size_t n_stations,
+                    size_t n_components, size_t n_corr, float *cc_sum) { // output variable
 
-    int t, ch, i;
-    int start_i, stop_i, cc_i;
+    size_t start_i, stop_i, cc_i;
     int min_moveout, max_moveout;
-    int network_offset, station_offset, cc_sum_offset;
+    size_t network_offset, station_offset, cc_sum_offset;
     int *moveouts_t = NULL;
     float *templates_t = NULL, *sum_square_templates_t = NULL, *weights_t = NULL;
     double *csum_square_data = NULL;
@@ -38,7 +36,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
     cumsum_square_data(data, n_samples_data, weights, n_stations, n_components, csum_square_data);
 
     // run matched filter template by template
-    for (t = 0; t < n_templates; t++) {
+    for (size_t t = 0; t < n_templates; t++) {
         network_offset = t * n_stations * n_components;
         station_offset = t * n_stations;
         cc_sum_offset = t * n_corr;
@@ -46,7 +44,7 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
         // find min/max moveout and template vector position
         min_moveout = 0;
         max_moveout = 0;
-        for (ch = 0; ch < (n_stations * n_components); ch++) {
+        for (size_t ch = 0; ch < (n_stations * n_components); ch++) {
             if (moveouts[network_offset + ch] < min_moveout) min_moveout = moveouts[network_offset + ch];
             if (moveouts[network_offset + ch] > max_moveout) max_moveout = moveouts[network_offset + ch];
         }
@@ -56,11 +54,16 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
         weights_t = weights + network_offset;
         sum_square_templates_t = sum_square_templates + network_offset;
 
-        start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
+        if (min_moveout < 0){
+            start_i = (size_t)(ceilf(-min_moveout / (float)step)) * step;
+        }
+        else{
+            start_i = 0;
+        }
         stop_i = 1 + (n_samples_data - n_samples_template - max_moveout);
 
-#pragma omp parallel for private(i, cc_i)
-        for (i = start_i; i < stop_i; i += step) {
+#pragma omp parallel for private(cc_i)
+        for (size_t i = start_i; i < stop_i; i += step) {
             cc_i = i / step;
             cc_sum[cc_sum_offset + cc_i] = network_corr(templates_t,
                                                         sum_square_templates_t,
@@ -81,18 +84,19 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
 //-------------------------------------------------------------------------
 float network_corr(float *templates, float *sum_square_template, int *moveouts,
                    float *data, double *csum_square_data, float *weights,
-                   int n_samples_template, int n_samples_data, int n_stations, int n_components) {
+                   size_t n_samples_template, size_t n_samples_data,
+                   size_t n_stations, size_t n_components) {
 
-    int s, c, d, dd, t;
-    int station_offset, component_offset;
+    size_t d, dd, t;
+    size_t station_offset, component_offset;
     float cc, cc_sum = 0; // output
  
-    for (s = 0; s < n_stations; s++) {
+    for (size_t s = 0; s < n_stations; s++) {
         
         station_offset = s * n_components;
 
         cc = 0;        
-        for (c = 0; c < n_components; c++) {
+        for (size_t c = 0; c < n_components; c++) {
             component_offset = station_offset + c;
             if (weights[component_offset] == 0) continue;
 
@@ -117,12 +121,11 @@ float network_corr(float *templates, float *sum_square_template, int *moveouts,
 //-------------------------------------------------------------------------
 float corrc(float *templates, float sum_square_template,
             float *data, double *csum_square_data,
-            int n_samples_template) {
+            size_t n_samples_template) {
 
-    int i;
     float numerator = 0, denominator = 0, cc = 0;
     
-    for (i = 0; i < n_samples_template; i++){
+    for (size_t i = 0; i < n_samples_template; i++){
         numerator += templates[i] * data[i];
     }
     denominator = sum_square_template * (float)(csum_square_data[n_samples_template - 1] - csum_square_data[-1]);
@@ -132,10 +135,10 @@ float corrc(float *templates, float sum_square_template,
 }
 
 //-------------------------------------------------------------------------
-void cumsum_square_data(float *data, int n_samples_data, 
-                        float *weights, int n_stations, int n_components,
+void cumsum_square_data(float *data, size_t n_samples_data, 
+                        float *weights, size_t n_stations, size_t n_components,
                         double *csum_square_data) {
-    int ch, data_offset, csum_offset;
+    size_t ch, data_offset, csum_offset;
 
     // loop over channels
 #pragma omp parallel for private(ch, data_offset, csum_offset)
@@ -150,8 +153,8 @@ void cumsum_square_data(float *data, int n_samples_data,
 }
 
 //-------------------------------------------------------------------------
-void neumaier_cumsum_squared(float *array, int length, double *cumsum) {
-    int i;
+void neumaier_cumsum_squared(float *array, size_t length, double *cumsum) {
+    size_t i;
     double running_sum, square, temporary;
     double correction = 0.0;
 
@@ -176,15 +179,14 @@ void neumaier_cumsum_squared(float *array, int length, double *cumsum) {
 
 //-------------------------------------------------------------------------
 void matched_filter_precise(float *templates, float *sum_square_templates, int *moveouts,
-                            float *data,
-                            float *weights, int step, int n_samples_template, int n_samples_data,
-                            int n_templates, int n_stations, int n_components, int n_corr,
-                            float *cc_sum, int normalize) { // output variable
+                            float *data, float *weights, size_t step, size_t n_samples_template,
+                            size_t n_samples_data, size_t n_templates, size_t n_stations,
+                            size_t n_components, size_t n_corr, float *cc_sum, int normalize) { // output variable
 
-    int t, ch, i;
-    int start_i, stop_i, cc_i;
+    size_t t, ch;
+    size_t start_i, stop_i, cc_i;
     int min_moveout, max_moveout;
-    int network_offset, station_offset, cc_sum_offset;
+    size_t network_offset, station_offset, cc_sum_offset;
     int *moveouts_t = NULL;
     float *templates_t = NULL, *sum_square_templates_t = NULL, *weights_t = NULL;
 
@@ -207,11 +209,11 @@ void matched_filter_precise(float *templates, float *sum_square_templates, int *
         weights_t = weights + network_offset;
         sum_square_templates_t = sum_square_templates + network_offset;
 
-        start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
+        start_i = (size_t)(ceilf(abs(min_moveout) / (float)step)) * step;
         stop_i = 1 + (n_samples_data - n_samples_template - max_moveout);
 
-#pragma omp parallel for private(i, cc_i)
-        for (i = start_i; i < stop_i; i += step) {
+#pragma omp parallel for private(cc_i)
+        for (size_t i = start_i; i < stop_i; i += step) {
             cc_i = i / step;
             cc_sum[cc_sum_offset + cc_i] = network_corr_precise(templates_t,
                                                                 sum_square_templates_t,
@@ -230,19 +232,19 @@ void matched_filter_precise(float *templates, float *sum_square_templates, int *
 //-------------------------------------------------------------------------
 float network_corr_precise(
     float *templates, float *sum_square_template, int *moveouts,
-    float *data, float *weights, int n_samples_template, int n_samples_data, 
-    int n_stations, int n_components, int normalize) {
+    float *data, float *weights, size_t n_samples_template, size_t n_samples_data, 
+    size_t n_stations, size_t n_components, int normalize) {
 
-    int s, c, d, dd, t;
-    int station_offset, component_offset;
+    size_t d, dd, t;
+    size_t station_offset, component_offset;
     float cc, cc_sum = 0; // output
 
-    for (s = 0; s < n_stations; s++) {
+    for (size_t s = 0; s < n_stations; s++) {
 
         station_offset = s * n_components;
 
         cc = 0;
-        for (c = 0; c < n_components; c++) {
+        for (size_t c = 0; c < n_components; c++) {
             component_offset = station_offset + c;
             if (weights[component_offset] == 0) continue;
 
@@ -265,19 +267,18 @@ float network_corr_precise(
 
 //-------------------------------------------------------------------------
 float corrc_precise(float *templates, float sum_square_template,
-            float *data, int n_samples_template, int normalize) {
+                    float *data, size_t n_samples_template, int normalize) {
 
-    int i;
     float numerator = 0, sum_square_data = 0, denominator = 0, cc = 0, mean=0, sample;
 
     if (normalize > 0){
-        for (i = 0; i < n_samples_template; i++){
+        for (size_t i = 0; i < n_samples_template; i++){
             mean += data[i];
         }
         mean /= n_samples_template;
     }
 
-    for (i = 0; i < n_samples_template; i++){
+    for (size_t i = 0; i < n_samples_template; i++){
         sample = data[i] - mean;
         numerator += templates[i] * sample;
         sum_square_data += sample * sample;

@@ -32,22 +32,23 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 //-------------------------------------------------------------------------
-__global__ void network_corr(float *templates, float *sum_square_template, int *moveout, float *data, float *weights,
+__global__ void network_corr(float *templates, float *sum_square_template,
+                             int *moveout, float *data, float *weights,
                              size_t step, size_t n_samples_template, size_t n_samples_data,
                              size_t n_stations, size_t n_components,
-                             int chunk_offset, int chunk_size,
+                             size_t chunk_offset, size_t chunk_size,
                              float *cc_mat, int normalize) {
   
     // each thread matches the template to one time in the data
-    int idx, first_sample_block, first_sample_trace, last_sample_trace; // sample's index
-    int i, s, c; // counters
-    int data_offset, templates_offset, sum_square_template_offset, cc_mat_offset;
+    size_t idx, first_sample_block, first_sample_trace, last_sample_trace; // sample's index
+    size_t s; // counters
+    size_t data_offset, templates_offset, sum_square_template_offset, cc_mat_offset;
     float numerator, denominator, sum_square_data, mean_data;
     float data_sample;
-    int t_idx;
+    size_t t_idx;
 
     //------------------------------------------------
-    int count_template = (n_samples_template / WARPSIZE + 1) * WARPSIZE;
+    size_t count_template = (n_samples_template / WARPSIZE + 1) * WARPSIZE;
     extern __shared__ float shared[];
     float *ss_template = &shared[0];
     float *templates_s = &shared[sizeof(float)];
@@ -58,7 +59,7 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
     first_sample_block = idx * step;
     s = blockIdx.x % n_stations;
 
-    for (c = 0; c < n_components; c++){
+    for (size_t c = 0; c < n_components; c++){
         if (weights[s * n_components + c] != 0.){
             // compute offsets for input variables
             cc_mat_offset = (first_sample_block / step + threadIdx.x - chunk_offset) * n_stations * n_components + s * n_components + c;
@@ -101,7 +102,7 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
                     mean_data /= n_samples_template;
                 }
 
-                for(i = 0; i < n_samples_template; i++) {
+                for(size_t i = 0; i < n_samples_template; i++) {
                     data_sample = data_s[i + threadIdx.x * step] - mean_data;
                     numerator += data_sample * templates_s[i];
                     sum_square_data += data_sample * data_sample;
@@ -123,9 +124,10 @@ __global__ void network_corr(float *templates, float *sum_square_template, int *
 
 //-------------------------------------------------------------------------
 __global__ void sum_cc(float *cc_mat, float *cc_sum, float *weights,
-        int n_stations, int n_components, int n_corr, int chunk_offset, int chunk_size) {
+                       size_t n_stations, size_t n_components, size_t n_corr,
+                       size_t chunk_offset, size_t chunk_size) {
 
-    int i, ch;
+    size_t i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
     if ( ((i + chunk_offset) < n_corr) & (i < chunk_size) ){
@@ -134,7 +136,7 @@ __global__ void sum_cc(float *cc_mat, float *cc_sum, float *weights,
         float *cc_mat_offset;
 
         cc_mat_offset = cc_mat + i * n_stations * n_components;
-        for (ch = 0; ch < (n_stations * n_components); ch++){
+        for (size_t ch = 0; ch < (n_stations * n_components); ch++){
             cc_sum[i] += cc_mat_offset[ch] * weights[ch];
         }
     }
@@ -144,7 +146,8 @@ __global__ void sum_cc(float *cc_mat, float *cc_sum, float *weights,
 void matched_filter(float *templates, float *sum_square_templates, 
                     int *moveouts, float *data, float *weights, size_t step,
                     size_t n_samples_template, size_t n_samples_data,
-                    size_t n_templates, size_t n_stations, size_t n_components, size_t n_corr,
+                    size_t n_templates, size_t n_stations,
+                    size_t n_components, size_t n_corr,
                     float *cc_sums, int normalize) {
 
     int t_global = -1;
@@ -154,7 +157,7 @@ void matched_filter(float *templates, float *sum_square_templates,
     cudaGetDeviceCount(&nGPUs);
     omp_set_num_threads(min(nGPUs, (int)n_templates));
 
-    int chunk_size = n_corr/NCHUNKS + 1;
+    size_t chunk_size = n_corr/NCHUNKS + 1;
 
     // Size of variables to create on the device (GPU)
     size_t sizeof_templates = sizeof(float) * n_samples_template * n_stations * n_components * n_templates;
@@ -192,7 +195,8 @@ void matched_filter(float *templates, float *sum_square_templates,
         size_t totalMem = 0;
         cudaMemGetInfo(&freeMem, &totalMem);
         if (sizeof_total > freeMem) {
-            printf("%zu bytes are requested on GPU #%i whereas it has only %zu free bytes.\n", sizeof_total, id, freeMem);
+            printf("%zu bytes are requested on GPU #%i whereas it has only %zu free bytes.\n",
+                   sizeof_total, id, freeMem);
             printf("Reduce the number of templates processed in one batch.\n");
             exit(0);
         }
@@ -234,17 +238,17 @@ void matched_filter(float *templates, float *sum_square_templates,
             if (t_thread >= (int)n_templates) break;
 
             // calculate the space required in the shared memory
-            int count_template = (n_samples_template / WARPSIZE + 1) * WARPSIZE;
-            int count_data = ((n_samples_template + BLOCKSIZE * step) / WARPSIZE + 1) * WARPSIZE;
-            int sharedMem = (count_template + count_data + 1) * sizeof(float);
+            size_t count_template = (n_samples_template / WARPSIZE + 1) * WARPSIZE;
+            size_t count_data = ((n_samples_template + BLOCKSIZE * step) / WARPSIZE + 1) * WARPSIZE;
+            size_t sharedMem = (count_template + count_data + 1) * sizeof(float);
             if (sharedMem > maxSharedMem) {
-                int new_step = (maxSharedMem/sizeof(float) - 2 * n_samples_template - 2 * WARPSIZE) / BLOCKSIZE;
-                int new_length = maxSharedMem/sizeof(float) - count_data - WARPSIZE;
+                size_t new_step = (maxSharedMem/sizeof(float) - 2 * n_samples_template - 2 * WARPSIZE) / BLOCKSIZE;
+                size_t new_length = maxSharedMem/sizeof(float) - count_data - WARPSIZE;
                 if (new_length < 0) new_length = 0;
-                printf("The maximum shared memory available on this card is %i bytes "\
-                        "(%i bytes required). You should consider the different options:\n"\
-                        "  - Change the temporal step to %i without changing the template length.\n"\
-                        "  - Change the template length to %i without changing the temporal step.\n"\
+                printf("The maximum shared memory available on this card is %zu bytes "\
+                        "(%zu bytes required). You should consider the different options:\n"\
+                        "  - Change the temporal step to %zu without changing the template length.\n"\
+                        "  - Change the template length to %zu without changing the temporal step.\n"\
                         "  - Try to decrease both of these parameters.\n",
                         maxSharedMem, sharedMem, new_step, new_length);
                 exit(0);
@@ -253,7 +257,7 @@ void matched_filter(float *templates, float *sum_square_templates,
             // compute the number of correlation steps for this template
             moveouts_t = moveouts + t_thread * n_stations * n_components;
             max_moveout = 0;
-            for (int i = 0; i < (n_stations * n_components); i++) {
+            for (size_t i = 0; i < (n_stations * n_components); i++) {
                 max_moveout = (moveouts_t[i] > max_moveout) ? moveouts_t[i] : max_moveout;
             }
             n_corr_t = (n_samples_data - n_samples_template - max_moveout) / step + 1;
@@ -264,9 +268,9 @@ void matched_filter(float *templates, float *sum_square_templates,
             moveouts_d_t = moveouts_d + t_thread * n_stations * n_components;
             weights_d_t = weights_d + t_thread * n_stations * n_components;
             
-            for (int ch = 0; ch < NCHUNKS; ch++){
-                int chunk_offset = ch * chunk_size;
-                int cs;
+            for (size_t ch = 0; ch < NCHUNKS; ch++){
+                size_t chunk_offset = ch * chunk_size;
+                size_t cs;
                 // make sure the chunk is not going out of bounds
                 if (chunk_offset + chunk_size > n_corr_t){
                     cs = n_corr_t - chunk_offset;

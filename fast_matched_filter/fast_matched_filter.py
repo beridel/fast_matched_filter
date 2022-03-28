@@ -46,7 +46,8 @@ try:
         ct.c_size_t,               # n_stations
         ct.c_size_t,               # n_components
         ct.c_size_t,               # n_corr
-        ct.POINTER(ct.c_float)]    # cc_sums
+        ct.POINTER(ct.c_float),    # cc_sums
+        ct.c_int]                  # normalize
     CPU_LOADED = True
 
 except OSError:
@@ -69,7 +70,8 @@ try:
         ct.c_size_t,               # n_stations
         ct.c_size_t,               # n_components
         ct.c_size_t,               # n_corr
-        ct.POINTER(ct.c_float)]    # cc_sums
+        ct.POINTER(ct.c_float),    # cc_sums
+        ct.c_int]                  # normalize
     GPU_LOADED = True
 
 except OSError:
@@ -138,30 +140,30 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
     # figure out and check input formats
     impossible_dimensions = False
     if templates.ndim > data.ndim:
-        n_templates = np.int32(templates.shape[0])
+        n_templates = int(templates.shape[0])
 
         assert templates.shape[1] == data.shape[0] # check stations
-        n_stations = np.int32(templates.shape[1])
+        n_stations = int(templates.shape[1])
 
         if templates.ndim == 4:
             assert templates.shape[2] == data.shape[1] # check components
-            n_components = np.int32(templates.shape[2])
+            n_components = int(templates.shape[2])
         elif templates.ndim == 3:
-            n_components = np.int32(1)
+            n_components = int(1)
         else:
             impossible_dimensions = True
 
     elif templates.ndim == data.ndim:
-        n_templates = np.int32(1)
+        n_templates = int(1)
         
         assert templates.shape[0] == data.shape[0] # check stations
-        n_stations = np.int32(templates.shape[0])
+        n_stations = int(templates.shape[0])
 
         if templates.ndim == 3:
             assert templates.shape[1] == data.shape[1] # check components
-            n_components = np.int32(templates.shape[1])
+            n_components = int(templates.shape[1])
         elif templates.ndim == 2:
-            n_components = np.int32(1)
+            n_components = int(1)
         else:
             impossible_dimensions = True
 
@@ -194,7 +196,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
         elif (n_templates * n_stations * n_components) / weights.size == 1.:
             weights = weights.reshape(n_templates, n_stations, n_components)
 
-    n_corr = np.int32((n_samples_data - n_samples_template) / step + 1)
+    n_corr = int((n_samples_data - n_samples_template) / step + 1)
 
     # compute sum of squares for templates
     sum_square_templates = np.sum(templates**2, axis=-1).astype(np.float32)
@@ -204,7 +206,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
 
     moveouts = np.int32(moveouts.flatten())
     weights = np.float32(weights.flatten())
-    step = np.int32(step)
+    step = int(step)
     # Note: shouldn't need to enforce int here because they were np.int32 before
 
     data = np.float32(data.flatten())
