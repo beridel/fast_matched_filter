@@ -17,6 +17,7 @@
 #define WARPSIZE 32
 #define NCHUNKS 20
 #define STABILITY_THRESHOLD 0.000001f
+#define MEGABYTES pow(1024, 2)
 
 extern "C" { // needed for C-style symbols in shared object compiled by nvcc
 #include "matched_filter_GPU.h"
@@ -96,7 +97,7 @@ __global__ void network_corr(float *templates, float *sum_square_template,
                 // if not, corresponds to an ill-defined CC with some samples out of the bounds
                 // Calculate the mean if fully normalising
                 if (normalize > 0){
-                    for (i = 0; i < n_samples_template; i++){
+                    for (size_t i = 0; i < n_samples_template; i++){
                         mean_data += data_s[i + threadIdx.x * step];
                     }
                     mean_data /= n_samples_template;
@@ -167,9 +168,12 @@ void matched_filter(float *templates, float *sum_square_templates,
     size_t sizeof_cc_sum = sizeof(float) * chunk_size; // cc sums for one template (and one chunk of data)
     size_t sizeof_sum_square_templates = sizeof(float) * n_templates * n_stations * n_components;
     size_t sizeof_weights = sizeof(float) * n_templates * n_stations * n_components;
-    size_t sizeof_total = sizeof_templates + sizeof_moveouts + sizeof_data + sizeof_cc_mat + sizeof_cc_sum + sizeof_sum_square_templates + sizeof_weights;
+    size_t sizeof_total = sizeof_templates + sizeof_moveouts + sizeof_data \
+                          + sizeof_cc_mat + sizeof_cc_sum \
+                          + sizeof_sum_square_templates + sizeof_weights;
 
-#pragma omp parallel shared(t_global, templates, moveouts, data, n_templates, cc_sums, weights, sum_square_templates) 
+#pragma omp parallel shared(t_global, templates, moveouts, data, n_templates, \
+                            cc_sums, weights, sum_square_templates) 
     {
         float *templates_d = NULL;
         float *data_d = NULL;
@@ -195,9 +199,9 @@ void matched_filter(float *templates, float *sum_square_templates,
         size_t totalMem = 0;
         cudaMemGetInfo(&freeMem, &totalMem);
         if (sizeof_total > freeMem) {
-            printf("%zu bytes are requested on GPU #%i whereas it has only %zu free bytes.\n",
-                   sizeof_total, id, freeMem);
-            printf("Reduce the number of templates processed in one batch.\n");
+            printf("%zu Mb are requested on GPU #%i whereas it has only %zu free Mb.\n",
+                   sizeof_total/MEGABYTES, id, freeMem/MEGABYTES);
+            printf("Reduce the number of templates or stations processed in one batch.\n");
             exit(0);
         }
 
@@ -243,14 +247,14 @@ void matched_filter(float *templates, float *sum_square_templates,
             size_t sharedMem = (count_template + count_data + 1) * sizeof(float);
             if (sharedMem > maxSharedMem) {
                 size_t new_step = (maxSharedMem/sizeof(float) - 2 * n_samples_template - 2 * WARPSIZE) / BLOCKSIZE;
-                size_t new_length = maxSharedMem/sizeof(float) - count_data - WARPSIZE;
+                int new_length = maxSharedMem/sizeof(float) - count_data - WARPSIZE;
                 if (new_length < 0) new_length = 0;
-                printf("The maximum shared memory available on this card is %zu bytes "\
-                        "(%zu bytes required). You should consider the different options:\n"\
+                printf("The maximum shared memory available on this card is %zu Mb "\
+                        "(%zu Mb required). You should consider the different options:\n"\
                         "  - Change the temporal step to %zu without changing the template length.\n"\
-                        "  - Change the template length to %zu without changing the temporal step.\n"\
+                        "  - Change the template length to %d without changing the temporal step.\n"\
                         "  - Try to decrease both of these parameters.\n",
-                        maxSharedMem, sharedMem, new_step, new_length);
+                        maxSharedMem/MEGABYTES, sharedMem/MEGABYTES, new_step, new_length);
                 exit(0);
             }
             
@@ -279,7 +283,6 @@ void matched_filter(float *templates, float *sum_square_templates,
                 else{
                     cs = chunk_size;
                 }
-                //sizeof_cc_mat = sizeof(float) * cs * n_stations * n_components;
                 size_t sizeof_cc_sum_chunk = sizeof(float) * cs;
 
                 // define block and grid sizes for kernels
@@ -313,7 +316,9 @@ void matched_filter(float *templates, float *sum_square_templates,
                 // using a small block size seems to improve the speed of sum_cc 
                 dim3 BS_sum(32);
                 dim3 GS_sum(ceilf(cs / (float)BS_sum.x));
-                sum_cc<<<GS_sum, BS_sum>>>(cc_mat_d, cc_sum_d, weights_d_t, n_stations, n_components, n_corr_t, chunk_offset, cs);
+                sum_cc<<<GS_sum, BS_sum>>>(cc_mat_d, cc_sum_d, weights_d_t,\
+                                           n_stations, n_components,\
+                                           n_corr_t, chunk_offset, cs);
 
                 // return an error if something happened in the kernel (and crash the program)
                 gpuErrchk(cudaPeekAtLastError());

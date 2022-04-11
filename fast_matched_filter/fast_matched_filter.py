@@ -10,7 +10,6 @@ Python bindings for the fast_matched_filter C libraries
 
 import numpy as np
 import ctypes as ct
-import datetime as dt
 import os
 
 path = os.path.join(os.path.dirname(__file__), 'lib')
@@ -228,7 +227,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
             n_corr,
             cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
 
-    if arch == 'precise':
+    elif arch == 'precise':
         _libCPU.matched_filter_precise(
             templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
@@ -291,11 +290,12 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
 
 def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                         template_duration=10, data_duration=86400,
-                        sampling_rate=100, step=1, arch='cpu', check_zeros='first'):
+                        sampling_rate=100, step=1, arch='cpu',
+                        check_zeros='first', normalize='short'):
     """
     output: templates, moveouts, data, step, cc_sum
     """
-
+    from time import time as give_time
     template_times = np.random.random_sample(n_templates) * (data_duration / 2)
     # if step is not 1, not very likely that random times will be found
     if step != 1:
@@ -353,20 +353,21 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
     weights = np.ones((n_templates, n_stations, n_components)) / (n_stations * n_components)
 
-    start_time = dt.datetime.now()
+    start_time = give_time()
     cc_sum = matched_filter(templates,
                             moveouts,
                             weights,
                             data,
                             step,
                             arch=arch,
-                            check_zeros=check_zeros)
-    stop_time = dt.datetime.now()
+                            check_zeros=check_zeros,
+                            normalize=normalize)
+    stop_time = give_time()
 
     print("Matched filter ({}) for {} templates on {} stations/{} "
-          "components over {} samples ({} step) ran in {}s".
+            "components over {} samples ({} step) ran in {:.3f}s".
           format(arch, n_templates, n_stations, n_components, n_samples_data,
-                 step, (stop_time - start_time).total_seconds()))
+                 step, (stop_time - start_time)))
 
     return templates, moveouts, data, step, cc_sum
 

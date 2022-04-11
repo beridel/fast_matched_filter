@@ -22,6 +22,10 @@ void matched_filter(float *templates, float *sum_square_templates, int *moveouts
                     size_t n_samples_data, size_t n_templates, size_t n_stations,
                     size_t n_components, size_t n_corr, float *cc_sum) { // output variable
 
+    /* Optimized computation (Neumaier algorithm) of the sum of the squared
+     * data samples. Fast but sometimes inaccurate when large amplitudes are
+     * recorded (e.g. large and proximal earthquakes). */
+
     size_t start_i, stop_i, cc_i;
     int min_moveout, max_moveout;
     size_t network_offset, station_offset, cc_sum_offset;
@@ -182,6 +186,12 @@ void matched_filter_precise(float *templates, float *sum_square_templates, int *
                             float *data, float *weights, size_t step, size_t n_samples_template,
                             size_t n_samples_data, size_t n_templates, size_t n_stations,
                             size_t n_components, size_t n_corr, float *cc_sum, int normalize) { // output variable
+
+     /* Simple but slower computation of The sum of the squared data samples.
+     *  Give higher precision results, in particular when large amplitudes
+     *  are present in the data. This function is called when arch='precise' 
+     *  is given to the wrapper. It supports both the short and the full 
+     *  normalization. */
 
     size_t t, ch;
     size_t start_i, stop_i, cc_i;
