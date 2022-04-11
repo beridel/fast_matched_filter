@@ -10,7 +10,6 @@ Python bindings for the fast_matched_filter C libraries
 
 import numpy as np
 import ctypes as ct
-import datetime as dt
 import os
 
 path = os.path.join(os.path.dirname(__file__), 'lib')
@@ -46,7 +45,8 @@ try:
         ct.c_size_t,               # n_stations
         ct.c_size_t,               # n_components
         ct.c_size_t,               # n_corr
-        ct.POINTER(ct.c_float)]    # cc_sums
+        ct.POINTER(ct.c_float),    # cc_sums
+        ct.c_int]                  # normalize
     CPU_LOADED = True
 
 except OSError:
@@ -69,7 +69,8 @@ try:
         ct.c_size_t,               # n_stations
         ct.c_size_t,               # n_components
         ct.c_size_t,               # n_corr
-        ct.POINTER(ct.c_float)]    # cc_sums
+        ct.POINTER(ct.c_float),    # cc_sums
+        ct.c_int]                  # normalize
     GPU_LOADED = True
 
 except OSError:
@@ -80,40 +81,58 @@ except OSError:
 
 def matched_filter(templates, moveouts, weights, data, step, arch='cpu', 
                    check_zeros='first', normalize='short'):
-    """
-    input:
-    templates ---------- 4D numpy array [templates x stations x
-                         components x time]
-                         or 3D numpy array [templates x traces x time]
-    moveouts ----------- 3D numpy array [templates x stations x components]
-                         or 2D numpy array [templates x traces]
-    weights ------------ 3D numpy array [templates x stations x components]
-                         or 2D numpy array [templates x traces]
-    data --------------- 3D numpy array [stations x components x
-                         time]
-                         or 2D numpy array [traces x time]
-    step --------------- interval between correlations (in samples)
-    arch --------------- 'cpu', 'precise' or 'gpu' implementation
-                         new: 'precise' for a more precise but slower
-                         CPU implementation
-    check_zeros ------------ integer: 0, 1 or 2, default to 1.
-                         Controls the verbosity level at the end of this
-                         routine when checking zeros in the time series
-                         of correlation coefficients (CCs).
-                         False: No messages.
-                         'first': Check zeros on the first template's CCs (recommended).
-                         'all': Check zeros on each template's CCs. It can be useful
-                         for troubleshooting but in general this would
-                         print too many messages.
-    normalize ---------- Either "short" or "full" - full is slower but removes
-                         the mean of the data at every correlation. Short
-                         is the original implementation.
+    """Compute the correlation coefficients between `templates` and `data`.
 
-    NB: When using normalize="short", the templates and the data sliding windows
-        must have zero means (high-pass filter the data if necessary).
+    Scan the continuous waveforms `data` with the template waveforms
+    `templates` given the relative propagation times `moveouts` and compute
+    a time series of summed correlation coefficients. The weighted sum is
+    defined by `weights`. Try `normalize='full'` and/or `arch='precise' or 'gpu'`
+    to achieve better numerical precision.
 
-    output:
-    2D numpy array (np.float32) [templates x time (at step defined interval)]
+    Parameters
+    -----------
+    templates: numpy.ndarray
+        4D (n_templates, n_stations, n_channels, n_tp_samples) or 3D 
+        (n_templates, n_traces, n_tp_samples) `numpy.ndarray` with the
+        template waveforms.
+    moveouts: numpy.ndarray, int
+        3D (n_templates, n_stations, n_channels) or 2D (n_templates, n_stations)
+        `numpy.ndarray` with the moveouts, in samples.
+    weights: numpy.ndarray, float
+        3D (n_templates, n_stations, n_channels) or 2D (n_stations, n_channels)
+        `numpy.ndarray` with the channel weights. For a given template, the
+        largest possible correlation coefficient is given by the sum of the
+        weights. Make sure that the weights sum to one if you want CCs between
+        1 and -1.
+    data: numpy.ndarray
+        3D (n_stations, n_channels, n_samples) or 2D (n_traces, n_samples)
+        `numpy.ndarray` with the continuous waveforms.
+    step: scalar, int
+        Time interval, in samples, between consecutive correlations.
+    arch: string, optional
+        One `'cpu'`, `'precise'` or `'gpu'`. The `'precise'` implementation
+        is a CPU implementation that slower but more accurate than `'cpu'`.
+        The GPU implementation is used if `arch='gpu'`. Default is `'cpu'`.
+    check_zeros: string, optional
+        Controls the verbosity level at the end of this routine when
+        checking zeros in the time series of correlation coefficients (CCs).
+        - False: No messages.  
+        - `'first'`: Check zeros on the first template's CCs (recommended).  
+        - `'all'`: Check zeros on each template's CCs. It can be useful for
+        troubleshooting but in general this would print too many messages.  
+
+        Default is `'first'`.
+    normalize: string, optional
+        Either "short" or "full" - full is slower but removes the mean of the
+        data at every correlation. Short is the original implementation.
+        NB: When using normalize="short", the templates and the data sliding
+        windows must have zero means (high-pass filter the data if necessary).
+
+    Returns
+    --------
+    cc_sums: numpy.ndarray, float
+        2D (n_templates, n_correlations) `numpy.ndarray`. The number of
+        correlations is controlled by `step`.
     """
     assert normalize in ("short", "full"), "Only know short or full normalization methods"
     if normalize == "full":
@@ -138,30 +157,30 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
     # figure out and check input formats
     impossible_dimensions = False
     if templates.ndim > data.ndim:
-        n_templates = np.int32(templates.shape[0])
+        n_templates = int(templates.shape[0])
 
         assert templates.shape[1] == data.shape[0] # check stations
-        n_stations = np.int32(templates.shape[1])
+        n_stations = int(templates.shape[1])
 
         if templates.ndim == 4:
             assert templates.shape[2] == data.shape[1] # check components
-            n_components = np.int32(templates.shape[2])
+            n_components = int(templates.shape[2])
         elif templates.ndim == 3:
-            n_components = np.int32(1)
+            n_components = int(1)
         else:
             impossible_dimensions = True
 
     elif templates.ndim == data.ndim:
-        n_templates = np.int32(1)
+        n_templates = int(1)
         
         assert templates.shape[0] == data.shape[0] # check stations
-        n_stations = np.int32(templates.shape[0])
+        n_stations = int(templates.shape[0])
 
         if templates.ndim == 3:
             assert templates.shape[1] == data.shape[1] # check components
-            n_components = np.int32(templates.shape[1])
+            n_components = int(templates.shape[1])
         elif templates.ndim == 2:
-            n_components = np.int32(1)
+            n_components = int(1)
         else:
             impossible_dimensions = True
 
@@ -194,7 +213,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
         elif (n_templates * n_stations * n_components) / weights.size == 1.:
             weights = weights.reshape(n_templates, n_stations, n_components)
 
-    n_corr = np.int32((n_samples_data - n_samples_template) / step + 1)
+    n_corr = int((n_samples_data - n_samples_template) / step + 1)
 
     # compute sum of squares for templates
     sum_square_templates = np.sum(templates**2, axis=-1).astype(np.float32)
@@ -204,7 +223,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
 
     moveouts = np.int32(moveouts.flatten())
     weights = np.float32(weights.flatten())
-    step = np.int32(step)
+    step = int(step)
     # Note: shouldn't need to enforce int here because they were np.int32 before
 
     data = np.float32(data.flatten())
@@ -226,7 +245,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
             n_corr,
             cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
 
-    if arch == 'precise':
+    elif arch == 'precise':
         _libCPU.matched_filter_precise(
             templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
@@ -289,11 +308,69 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
 
 def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                         template_duration=10, data_duration=86400,
-                        sampling_rate=100, step=1, arch='cpu', check_zeros='first'):
-    """
-    output: templates, moveouts, data, step, cc_sum
-    """
+                        sampling_rate=100, step=1, arch='cpu',
+                        check_zeros='first', normalize='short'):
+    """Test the `matched_filter` function.  
 
+    Generate random data, templates, and moveouts, and run a matched-filter
+    search. The templates are sliced from the data, therefore the maximum
+    correlation coefficient should always be one if the program ran normally.
+    Try `normalize='full'` and/or `arch='precise' or 'gpu'` to achieve better
+    numerical precision.
+
+    Parameters
+    ----------
+    n_templates: scalar, int, optional
+        Number of synthetic templates. Default to 1.
+    n_stations: scalar, int, optional
+        Number of stations. Default to 1.
+    n_components: scalar, int, optional
+        Number of components/channels. Default to 1.
+    template_duration: scalar, float, optional
+        Duration, in seconds, of the template waveforms. Default to 10s.
+    data_duration: scalar, float, optional
+        Duration, in seconds, of the data waveforms. Default to 86400s.
+    sampling_rate: scalar, float, optional
+        Sampling frequency (Hz) of the waveforms. Default to 100Hz.
+    step: scalar, int
+        Time interval, in samples, between consecutive correlations.
+    arch: string, optional
+        One `'cpu'`, `'precise'` or `'gpu'`. The `'precise'` implementation
+        is a CPU implementation that slower but more accurate than `'cpu'`.
+        The GPU implementation is used if `arch='gpu'`. Default is `'cpu'`.
+    check_zeros: string, optional
+        Controls the verbosity level at the end of this routine when
+        checking zeros in the time series of correlation coefficients (CCs).  
+        - False: No messages.  
+        - `'first'`: Check zeros on the first template's CCs (recommended).  
+        - `'all'`: Check zeros on each template's CCs. It can be useful for
+        troubleshooting but in general this would print too many messages.  
+
+        Default is `'first'`.
+    normalize: string, optional
+        Either "short" or "full" - full is slower but removes the mean of the
+        data at every correlation. Short is the original implementation.
+        NB: When using normalize="short", the templates and the data sliding
+        windows must have zero means (high-pass filter the data if necessary).
+
+    Returns
+    --------
+    templates: numpy.ndarray
+        (n_templates, n_stations, n_components, n_tp_samples) `numpy.ndarray`
+        with the random template waveforms generated by the function.
+    moveouts: numpy.ndarray
+        (n_templates, n_stations, n_components) `numpy.ndarray` with the random
+        moveouts generated by the function.
+    data: numpy.ndarray
+        (n_stations, n_components, n_samples) `numpy.ndarray` with the random
+        data generated by the function.
+    step: scalar, int
+        Time interval, in samples, between consecutive correlations.
+    cc_sums: numpy.ndarray, float
+        2D (n_templates, n_correlations) `numpy.ndarray`. The number of
+        correlations is controlled by `step`.
+    """
+    from time import time as give_time
     template_times = np.random.random_sample(n_templates) * (data_duration / 2)
     # if step is not 1, not very likely that random times will be found
     if step != 1:
@@ -351,20 +428,21 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
     weights = np.ones((n_templates, n_stations, n_components)) / (n_stations * n_components)
 
-    start_time = dt.datetime.now()
+    start_time = give_time()
     cc_sum = matched_filter(templates,
                             moveouts,
                             weights,
                             data,
                             step,
                             arch=arch,
-                            check_zeros=check_zeros)
-    stop_time = dt.datetime.now()
+                            check_zeros=check_zeros,
+                            normalize=normalize)
+    stop_time = give_time()
 
     print("Matched filter ({}) for {} templates on {} stations/{} "
-          "components over {} samples ({} step) ran in {}s".
+            "components over {} samples ({} step) ran in {:.3f}s".
           format(arch, n_templates, n_stations, n_components, n_samples_data,
-                 step, (stop_time - start_time).total_seconds()))
+                 step, (stop_time - start_time)))
 
     return templates, moveouts, data, step, cc_sum
 

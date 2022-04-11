@@ -32,12 +32,12 @@ LDFLAGS_GPU=--shared
 # CPU FLAGS
 COPTIMFLAGS_CPU=-O3
 # -march=native can cause problems on some CPUs; remove if needed
-CFLAGS_CPU=-fopenmp -fPIC -ftree-vectorize -march=native
+CFLAGS_CPU=-fopenmp -fPIC -ftree-vectorize -march=native -std=gnu99
 LDFLAGS_CPU=-shared
 
 # MEX FLAGS
 COPTIMFLAGS_MEX=-O3
-CFLAGS_MEX=-fopenmp -fPIC -march=native
+CFLAGS_MEX=-fopenmp -fPIC -march=native -std=gnu99
  # who knows why mex needs fopenmp again
 LDFLAGS_MEX=-fopenmp -shared
 
