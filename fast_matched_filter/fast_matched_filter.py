@@ -81,40 +81,58 @@ except OSError:
 
 def matched_filter(templates, moveouts, weights, data, step, arch='cpu', 
                    check_zeros='first', normalize='short'):
-    """
-    input:
-    templates ---------- 4D numpy array [templates x stations x
-                         components x time]
-                         or 3D numpy array [templates x traces x time]
-    moveouts ----------- 3D numpy array [templates x stations x components]
-                         or 2D numpy array [templates x traces]
-    weights ------------ 3D numpy array [templates x stations x components]
-                         or 2D numpy array [templates x traces]
-    data --------------- 3D numpy array [stations x components x
-                         time]
-                         or 2D numpy array [traces x time]
-    step --------------- interval between correlations (in samples)
-    arch --------------- 'cpu', 'precise' or 'gpu' implementation
-                         new: 'precise' for a more precise but slower
-                         CPU implementation
-    check_zeros ------------ integer: 0, 1 or 2, default to 1.
-                         Controls the verbosity level at the end of this
-                         routine when checking zeros in the time series
-                         of correlation coefficients (CCs).
-                         False: No messages.
-                         'first': Check zeros on the first template's CCs (recommended).
-                         'all': Check zeros on each template's CCs. It can be useful
-                         for troubleshooting but in general this would
-                         print too many messages.
-    normalize ---------- Either "short" or "full" - full is slower but removes
-                         the mean of the data at every correlation. Short
-                         is the original implementation.
+    """Compute the correlation coefficients between `templates` and `data`.
 
-    NB: When using normalize="short", the templates and the data sliding windows
-        must have zero means (high-pass filter the data if necessary).
+    Scan the continuous waveforms `data` with the template waveforms
+    `templates` given the relative propagation times `moveouts` and compute
+    a time series of summed correlation coefficients. The weighted sum is
+    defined by `weights`. Try `normalize='full'` and/or `arch='precise' or 'gpu'`
+    to achieve better numerical precision.
 
-    output:
-    2D numpy array (np.float32) [templates x time (at step defined interval)]
+    Parameters
+    -----------
+    templates: numpy.ndarray
+        4D (n_templates, n_stations, n_channels, n_tp_samples) or 3D 
+        (n_templates, n_traces, n_tp_samples) `numpy.ndarray` with the
+        template waveforms.
+    moveouts: numpy.ndarray, int
+        3D (n_templates, n_stations, n_channels) or 2D (n_templates, n_stations)
+        `numpy.ndarray` with the moveouts, in samples.
+    weights: numpy.ndarray, float
+        3D (n_templates, n_stations, n_channels) or 2D (n_stations, n_channels)
+        `numpy.ndarray` with the channel weights. For a given template, the
+        largest possible correlation coefficient is given by the sum of the
+        weights. Make sure that the weights sum to one if you want CCs between
+        1 and -1.
+    data: numpy.ndarray
+        3D (n_stations, n_channels, n_samples) or 2D (n_traces, n_samples)
+        `numpy.ndarray` with the continuous waveforms.
+    step: scalar, int
+        Time interval, in samples, between consecutive correlations.
+    arch: string, optional
+        One `'cpu'`, `'precise'` or `'gpu'`. The `'precise'` implementation
+        is a CPU implementation that slower but more accurate than `'cpu'`.
+        The GPU implementation is used if `arch='gpu'`. Default is `'cpu'`.
+    check_zeros: string, optional
+        Controls the verbosity level at the end of this routine when
+        checking zeros in the time series of correlation coefficients (CCs).
+        - False: No messages.  
+        - `'first'`: Check zeros on the first template's CCs (recommended).  
+        - `'all'`: Check zeros on each template's CCs. It can be useful for
+        troubleshooting but in general this would print too many messages.  
+
+        Default is `'first'`.
+    normalize: string, optional
+        Either "short" or "full" - full is slower but removes the mean of the
+        data at every correlation. Short is the original implementation.
+        NB: When using normalize="short", the templates and the data sliding
+        windows must have zero means (high-pass filter the data if necessary).
+
+    Returns
+    --------
+    cc_sums: numpy.ndarray, float
+        2D (n_templates, n_correlations) `numpy.ndarray`. The number of
+        correlations is controlled by `step`.
     """
     assert normalize in ("short", "full"), "Only know short or full normalization methods"
     if normalize == "full":
@@ -292,8 +310,65 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                         template_duration=10, data_duration=86400,
                         sampling_rate=100, step=1, arch='cpu',
                         check_zeros='first', normalize='short'):
-    """
-    output: templates, moveouts, data, step, cc_sum
+    """Test the `matched_filter` function.  
+
+    Generate random data, templates, and moveouts, and run a matched-filter
+    search. The templates are sliced from the data, therefore the maximum
+    correlation coefficient should always be one if the program ran normally.
+    Try `normalize='full'` and/or `arch='precise' or 'gpu'` to achieve better
+    numerical precision.
+
+    Parameters
+    ----------
+    n_templates: scalar, int, optional
+        Number of synthetic templates. Default to 1.
+    n_stations: scalar, int, optional
+        Number of stations. Default to 1.
+    n_components: scalar, int, optional
+        Number of components/channels. Default to 1.
+    template_duration: scalar, float, optional
+        Duration, in seconds, of the template waveforms. Default to 10s.
+    data_duration: scalar, float, optional
+        Duration, in seconds, of the data waveforms. Default to 86400s.
+    sampling_rate: scalar, float, optional
+        Sampling frequency (Hz) of the waveforms. Default to 100Hz.
+    step: scalar, int
+        Time interval, in samples, between consecutive correlations.
+    arch: string, optional
+        One `'cpu'`, `'precise'` or `'gpu'`. The `'precise'` implementation
+        is a CPU implementation that slower but more accurate than `'cpu'`.
+        The GPU implementation is used if `arch='gpu'`. Default is `'cpu'`.
+    check_zeros: string, optional
+        Controls the verbosity level at the end of this routine when
+        checking zeros in the time series of correlation coefficients (CCs).  
+        - False: No messages.  
+        - `'first'`: Check zeros on the first template's CCs (recommended).  
+        - `'all'`: Check zeros on each template's CCs. It can be useful for
+        troubleshooting but in general this would print too many messages.  
+
+        Default is `'first'`.
+    normalize: string, optional
+        Either "short" or "full" - full is slower but removes the mean of the
+        data at every correlation. Short is the original implementation.
+        NB: When using normalize="short", the templates and the data sliding
+        windows must have zero means (high-pass filter the data if necessary).
+
+    Returns
+    --------
+    templates: numpy.ndarray
+        (n_templates, n_stations, n_components, n_tp_samples) `numpy.ndarray`
+        with the random template waveforms generated by the function.
+    moveouts: numpy.ndarray
+        (n_templates, n_stations, n_components) `numpy.ndarray` with the random
+        moveouts generated by the function.
+    data: numpy.ndarray
+        (n_stations, n_components, n_samples) `numpy.ndarray` with the random
+        data generated by the function.
+    step: scalar, int
+        Time interval, in samples, between consecutive correlations.
+    cc_sums: numpy.ndarray, float
+        2D (n_templates, n_correlations) `numpy.ndarray`. The number of
+        correlations is controlled by `step`.
     """
     from time import time as give_time
     template_times = np.random.random_sample(n_templates) * (data_duration / 2)
