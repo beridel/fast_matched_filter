@@ -16,37 +16,30 @@ path = os.path.join(os.path.dirname(__file__), 'lib')
 CPU_LOADED = False
 GPU_LOADED = False
 
+argtypes = [
+    ct.POINTER(ct.c_float),    # templates
+    ct.POINTER(ct.c_float),    # sum of squares of templates
+    ct.POINTER(ct.c_int),      # moveouts
+    ct.POINTER(ct.c_float),    # data
+    ct.POINTER(ct.c_float),    # weights
+    ct.c_size_t,               # step
+    ct.c_size_t,               # n_samples_template
+    ct.c_size_t,               # n_samples_data
+    ct.c_size_t,               # n_templates
+    ct.c_size_t,               # n_stations
+    ct.c_size_t,               # n_components
+    ct.c_size_t,               # n_corr
+    ct.POINTER(ct.c_float)     # cc_sums or cc
+    ]
+
 try:
     _libCPU = ct.cdll.LoadLibrary(os.path.join(path, 'matched_filter_CPU.so'))
-    _libCPU.matched_filter.argtypes = [
-        ct.POINTER(ct.c_float),    # templates
-        ct.POINTER(ct.c_float),    # sum of squares of templates
-        ct.POINTER(ct.c_int),      # moveouts
-        ct.POINTER(ct.c_float),    # data
-        ct.POINTER(ct.c_float),    # weights
-        ct.c_size_t,               # step
-        ct.c_size_t,               # n_samples_template
-        ct.c_size_t,               # n_samples_data
-        ct.c_size_t,               # n_templates
-        ct.c_size_t,               # n_stations
-        ct.c_size_t,               # n_components
-        ct.c_size_t,               # n_corr
-        ct.POINTER(ct.c_float)]    # cc_sums
-    _libCPU.matched_filter_precise.argtypes = [
-        ct.POINTER(ct.c_float),    # templates
-        ct.POINTER(ct.c_float),    # sum of squares of templates
-        ct.POINTER(ct.c_int),      # moveouts
-        ct.POINTER(ct.c_float),    # data
-        ct.POINTER(ct.c_float),    # weights
-        ct.c_size_t,               # step
-        ct.c_size_t,               # n_samples_template
-        ct.c_size_t,               # n_samples_data
-        ct.c_size_t,               # n_templates
-        ct.c_size_t,               # n_stations
-        ct.c_size_t,               # n_components
-        ct.c_size_t,               # n_corr
-        ct.POINTER(ct.c_float),    # cc_sums
-        ct.c_int]                  # normalize
+    _libCPU.matched_filter.argtypes = argtypes
+    _libCPU.matched_filter_precise.argtypes = argtypes \
+            + [ct.c_int] # normalize
+    _libCPU.matched_filter_no_sum.argtypes = argtypes
+    _libCPU.matched_filter_precise_no_sum.argtypes = argtypes \
+            + [ct.c_int] # normalize
     CPU_LOADED = True
 
 except OSError:
@@ -56,21 +49,7 @@ except OSError:
 
 try:
     _libGPU = ct.cdll.LoadLibrary(os.path.join(path, 'matched_filter_GPU.so'))
-    _libGPU.matched_filter.argtypes = [
-        ct.POINTER(ct.c_float),    # templates
-        ct.POINTER(ct.c_float),    # sum_square_templates
-        ct.POINTER(ct.c_int),      # moveouts
-        ct.POINTER(ct.c_float),    # data
-        ct.POINTER(ct.c_float),    # stations' weights
-        ct.c_size_t,               # step
-        ct.c_size_t,               # n_samples_data
-        ct.c_size_t,               # n_samples_template
-        ct.c_size_t,               # n_templates
-        ct.c_size_t,               # n_stations
-        ct.c_size_t,               # n_components
-        ct.c_size_t,               # n_corr
-        ct.POINTER(ct.c_float),    # cc_sums
-        ct.c_int]                  # normalize
+    _libGPU.matched_filter.argtypes = argtypes
     GPU_LOADED = True
 
 except OSError:
@@ -80,7 +59,7 @@ except OSError:
 
 
 def matched_filter(templates, moveouts, weights, data, step, arch='cpu', 
-                   check_zeros='first', normalize='short'):
+                   check_zeros='first', normalize='short', network_sum=True):
     """Compute the correlation coefficients between `templates` and `data`.
 
     Scan the continuous waveforms `data` with the template waveforms
@@ -127,12 +106,18 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
         data at every correlation. Short is the original implementation.
         NB: When using normalize="short", the templates and the data sliding
         windows must have zero means (high-pass filter the data if necessary).
+    network_sum: boolean, default to True
+        If True, returns the weighted sum of correlation coefficients across
+        the station network. If False, returns the correlation coefficients
+        for each channel.
 
     Returns
     --------
-    cc_sums: numpy.ndarray, float
-        2D (n_templates, n_correlations) `numpy.ndarray`. The number of
-        correlations is controlled by `step`.
+    cc: numpy.ndarray, float
+        If `network_sum=True`, 2D (n_templates, n_correlations) `numpy.ndarray`.
+        If `network_sum=False`, 4D (n_templates, n_stations, n_components,
+        n_correlations) `numpy.ndarray`. The number of correlations is
+        controlled by `step`.
     """
     assert normalize in ("short", "full"), "Only know short or full normalization methods"
     if normalize == "full":
@@ -227,11 +212,13 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
     # Note: shouldn't need to enforce int here because they were np.int32 before
 
     data = np.float32(data.flatten())
-    cc_sums = np.zeros(n_templates * n_corr, dtype=np.float32)
+    if network_sum:
+        cc = np.zeros(n_templates * n_corr, dtype=np.float32)
+    else:
+        cc = np.zeros(n_templates * n_stations * n_components * n_corr, dtype=np.float32)
 
-    if arch == 'cpu':
-        _libCPU.matched_filter(
-            templates.ctypes.data_as(ct.POINTER(ct.c_float)),
+    # list of arguments
+    args = (templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
             data.ctypes.data_as(ct.POINTER(ct.c_float)),
@@ -243,43 +230,32 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
             n_stations,
             n_components,
             n_corr,
-            cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)))
+            cc.ctypes.data_as(ct.POINTER(ct.c_float))
+            )
 
-    elif arch == 'precise':
-        _libCPU.matched_filter_precise(
-            templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-            sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-            moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
-            data.ctypes.data_as(ct.POINTER(ct.c_float)),
-            weights.ctypes.data_as(ct.POINTER(ct.c_float)),
-            step,
-            n_samples_template,
-            n_samples_data,
-            n_templates,
-            n_stations,
-            n_components,
-            n_corr,
-            cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)),
-            normalize)
-    
-    elif arch == 'gpu':
-        _libGPU.matched_filter(
-                templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-                sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-                moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
-                data.ctypes.data_as(ct.POINTER(ct.c_float)),
-                weights.ctypes.data_as(ct.POINTER(ct.c_float)),
-                step,
-                n_samples_template,
-                n_samples_data,
-                n_templates,
-                n_stations,
-                n_components,
-                n_corr,
-                cc_sums.ctypes.data_as(ct.POINTER(ct.c_float)),
-                normalize)
+    if arch == 'cpu' and network_sum:
+        _libCPU.matched_filter(*args)
+    elif arch == 'cpu' and ~network_sum:
+        _libCPU.matched_filter_no_sum(*args)
+    elif arch == 'precise' and network_sum:
+        args = args + (normalize,)
+        _libCPU.matched_filter_precise(*args)
+    elif arch == 'precise' and ~network_sum:
+        args = args + (normalize,)
+        _libCPU.matched_filter_precise_no_sum(*args)
+    elif arch == 'gpu' and network_sum:
+        args = args + (normalize,)
+        _libGPU.matched_filter(*args)
+    elif arch == 'gpu' and ~network_sum:
+        print('no implementation yet!')
+        return
+        #args = args + (normalize,)
+        #_libGPU.matched_filter_no_sum(*args)
 
-    cc_sums = cc_sums.reshape((n_templates, n_corr))
+    if network_sum:
+        cc = cc.reshape(n_templates, n_corr)
+    else:
+        cc = cc.reshape(n_templates, n_corr, n_stations, n_components)
     # check for zeros in the CC time series more or less thoroughly
     # depending on the value of 'check_zeros'
     if (check_zeros != False) and (check_zeros != 'first') and (check_zeros != 'all'):
@@ -290,12 +266,24 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
         pass
     elif check_zeros == 'first':
         # only check the first template
-        zeros = np.sum(
-                cc_sums[0:1, :int(n_corr - moveouts.max()/step)] == 0., axis=-1)
+        if network_sum:
+            zeros = np.sum(
+                    cc[0:1, :int(n_corr - moveouts.max()/step)] == 0.,
+                    axis=-1
+                    )
+        else:
+            zeros = np.sum(
+                    cc[0:1, :, :, :int(n_corr - moveouts.max()/step)] == 0.,
+                    axis=(1, 2, 3)
+                    )
     else:
         # check all templates
         zeros = np.sum(
-                cc_sums[:, :int(n_corr - moveouts.max()/step)] == 0., axis=-1)
+                cc[..., :int(n_corr - moveouts.max()/step)].reshape(
+                    n_templates, -1) == 0.,
+                axis=-1
+                )
+
     if check_zeros:
         for t in range(zeros.shape[0]):
             if zeros[t] > 10:
@@ -303,13 +291,14 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
                       "template. Can be caused by zeros in data, or too low "
                       "amplitudes (try to increase the gain).".
                       format(zeros[t], t))
-    return cc_sums
+    return cc
 
 
 def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                         template_duration=10, data_duration=86400,
                         sampling_rate=100, step=1, arch='cpu',
-                        check_zeros='first', normalize='short'):
+                        check_zeros='first', normalize='short',
+                        network_sum=True):
     """Test the `matched_filter` function.  
 
     Generate random data, templates, and moveouts, and run a matched-filter
@@ -352,6 +341,10 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
         data at every correlation. Short is the original implementation.
         NB: When using normalize="short", the templates and the data sliding
         windows must have zero means (high-pass filter the data if necessary).
+    network_sum: boolean, default to True
+        If True, returns the weighted sum of correlation coefficients across
+        the station network. If False, returns the correlation coefficients
+        for each channel.
 
     Returns
     --------
@@ -369,6 +362,8 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     cc_sums: numpy.ndarray, float
         2D (n_templates, n_correlations) `numpy.ndarray`. The number of
         correlations is controlled by `step`.
+    run_time: scalar, float
+        Time spent by FMF to compute the correlation coefficients.
     """
     from time import time as give_time
     template_times = np.random.random_sample(n_templates) * (data_duration / 2)
@@ -384,7 +379,7 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
         for s in range(n_stations):
             moveouts[t, s, :] = (np.random.random_sample(n_components)
                               * (max_moveout - min_moveout)) + min_moveout
-    moveouts = np.round(moveouts * sampling_rate)
+    moveouts = np.int32(np.round(moveouts * sampling_rate))
 
     # generate data
     n_samples_data = data_duration * sampling_rate
@@ -395,7 +390,9 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
         print('Adjust your input parameters so that this product is an integer.')
         return
 
-    data = np.random.random_sample((n_stations, n_components, n_samples_data))
+    data = np.random.random_sample(
+            (n_stations, n_components, n_samples_data))\
+                    .astype('float32')
     for s in range(n_stations):
         for c in range(n_components):
             data[s, c, :] = data[s, c, :] - np.mean(data[s, c, :])
@@ -413,7 +410,8 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
     templates = np.zeros((n_templates,
                           n_stations,
                           n_components,
-                          n_samples_template))
+                          n_samples_template),
+                          dtype=np.float32)
     for t in range(n_templates):
         start_t = template_times[t] * sampling_rate
 
@@ -426,7 +424,9 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
 
         templates[t, :, :, :n_samples_template] = template
 
-    weights = np.ones((n_templates, n_stations, n_components)) / (n_stations * n_components)
+    weights = np.ones(
+            (n_templates, n_stations, n_components),
+            dtype=np.float32) / (n_stations * n_components)
 
     start_time = give_time()
     cc_sum = matched_filter(templates,
@@ -436,7 +436,8 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
                             step,
                             arch=arch,
                             check_zeros=check_zeros,
-                            normalize=normalize)
+                            normalize=normalize,
+                            network_sum=network_sum)
     stop_time = give_time()
 
     print("Matched filter ({}) for {} templates on {} stations/{} "
@@ -444,5 +445,5 @@ def test_matched_filter(n_templates=1, n_stations=1, n_components=1,
           format(arch, n_templates, n_stations, n_components, n_samples_data,
                  step, (stop_time - start_time)))
 
-    return templates, moveouts, data, step, cc_sum
+    return templates, moveouts, data, step, cc_sum, stop_time-start_time
 
