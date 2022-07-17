@@ -47,7 +47,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 setup(name='FastMatchedFilter',
-      version='1.4.1',
+      version='1.5.0',
       description='Fast time-domain normalised cross-correlation for '
                   'CPU & GPU',
       long_description=long_description,
