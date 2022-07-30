@@ -153,6 +153,7 @@ void matched_filter(float *templates, float *sum_square_templates,
 
     int t_global = -1;
     int nGPUs;
+    size_t Mb = MEGABYTES;
 
     // find the number of available GPUs
     cudaGetDeviceCount(&nGPUs);
@@ -200,7 +201,7 @@ void matched_filter(float *templates, float *sum_square_templates,
         cudaMemGetInfo(&freeMem, &totalMem);
         if (sizeof_total > freeMem) {
             printf("%zu Mb are requested on GPU #%i whereas it has only %zu free Mb.\n",
-                   sizeof_total/MEGABYTES, id, freeMem/MEGABYTES);
+                   sizeof_total/Mb, id, freeMem/Mb);
             printf("Reduce the number of templates or stations processed in one batch.\n");
             exit(0);
         }
@@ -254,7 +255,7 @@ void matched_filter(float *templates, float *sum_square_templates,
                         "  - Change the temporal step to %zu without changing the template length.\n"\
                         "  - Change the template length to %d without changing the temporal step.\n"\
                         "  - Try to decrease both of these parameters.\n",
-                        maxSharedMem/MEGABYTES, sharedMem/MEGABYTES, new_step, new_length);
+                        maxSharedMem/Mb, sharedMem/Mb, new_step, new_length);
                 exit(0);
             }
             
