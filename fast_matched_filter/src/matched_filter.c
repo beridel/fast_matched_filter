@@ -127,6 +127,8 @@ void matched_filter_precise(
 
         if (min_moveout < 0){
             start_i = (size_t)(ceilf(-min_moveout / (float)step)) * step;
+            printf("Min moveout is %d\n", min_moveout);
+            printf("Starting time is %zu\n", start_i);
         }
         else{
             start_i = 0;

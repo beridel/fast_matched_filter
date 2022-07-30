@@ -285,8 +285,11 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
                 )
 
     if check_zeros:
+        msg_threshold = 10
+        if ~network_sum:
+            msg_threshold *= np.sum(weights[0, ...] > 0.)
         for t in range(zeros.shape[0]):
-            if zeros[t] > 10:
+            if zeros[t] > msg_threshold:
                 print("{} correlation computations were skipped on the {:d}-th "
                       "template. Can be caused by zeros in data, or too low "
                       "amplitudes (try to increase the gain).".
