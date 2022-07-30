@@ -26,7 +26,10 @@ matlab: $(maindir)/matched_filter.$(mex_extension) $(maindir)/matched_filter_pre
 # GPU FLAGS
 COPTIMFLAGS_GPU=-O3
 CFLAGS_GPU=-Xcompiler "-fopenmp -fPIC -march=native -ftree-vectorize" -Xlinker -lgomp
-CARDDEPENDENTFLAG=-arch=sm_35
+ARCHFLAG=-gencode arch=compute_35,code=sm_35\
+         -gencode arch=compute_70,code=sm_70\
+         -gencode arch=compute_75,code=sm_75\
+         -gencode arch=compute_80,code=sm_80
 LDFLAGS_GPU=--shared
 
 # CPU FLAGS
@@ -43,7 +46,7 @@ LDFLAGS_MEX=-fopenmp -shared
 
 # build for python
 $(libdir)/matched_filter_GPU.so: $(srcdir)/matched_filter.cu
-	$(NVCC) $(COPTIMFLAGS_GPU) $(CFLAGS_GPU) $(CARDDEPENDENTFLAG) $(LDFLAGS_GPU) $< -o $@
+	$(NVCC) $(COPTIMFLAGS_GPU) $(CFLAGS_GPU) $(ARCHFLAG) $(LDFLAGS_GPU) $< -o $@
 
 $(libdir)/matched_filter_CPU.so: $(srcdir)/matched_filter.c
 	$(CC) $(COPTIMFLAGS_CPU) $(CFLAGS_CPU) $(LDFLAGS_CPU) $< -o $@
