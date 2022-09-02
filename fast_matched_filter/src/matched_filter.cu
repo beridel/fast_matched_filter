@@ -56,6 +56,8 @@ __global__ void network_corr(float *templates, float *sum_square_template,
     float *data_s = &shared[count_template+sizeof(float)];
 
     // 1 block processes one channel to blockDim.x / step different positions in time
+    // idx is in units of correlation time
+    // first_samples_block is in units of waveform time
     idx = blockIdx.x/n_stations * blockDim.x + chunk_offset;
     first_sample_block = idx * step;
     s = blockIdx.x % n_stations;
@@ -149,7 +151,7 @@ void matched_filter(float *templates, float *sum_square_templates,
                     size_t n_samples_template, size_t n_samples_data,
                     size_t n_templates, size_t n_stations,
                     size_t n_components, size_t n_corr,
-                    float *cc_sums, int normalize) {
+                    float *cc_out, int normalize, int sum_cc) {
 
     int t_global = -1;
     int nGPUs;
@@ -166,21 +168,28 @@ void matched_filter(float *templates, float *sum_square_templates,
     size_t sizeof_moveouts = sizeof(int) * n_components * n_stations * n_templates;
     size_t sizeof_data = sizeof(float) * n_samples_data * n_stations * n_components;
     size_t sizeof_cc_mat = sizeof(float) * chunk_size * n_stations * n_components; // cc matrix for one template (and one chunk of data)
-    size_t sizeof_cc_sum = sizeof(float) * chunk_size; // cc sums for one template (and one chunk of data)
+    if (sum_cc > 0){
+        // return summed CC time series (memory efficient)
+        size_t sizeof_cc_out = sizeof(float) * chunk_size; // cc sums for one template (and one chunk of data)
+    }
+    else{
+        // return one CC time series per channel
+        size_t sizeof_cc_out = sizeof_cc_mat;
+    }
     size_t sizeof_sum_square_templates = sizeof(float) * n_templates * n_stations * n_components;
     size_t sizeof_weights = sizeof(float) * n_templates * n_stations * n_components;
     size_t sizeof_total = sizeof_templates + sizeof_moveouts + sizeof_data \
-                          + sizeof_cc_mat + sizeof_cc_sum \
+                          + sizeof_cc_mat + sizeof_cc_out \
                           + sizeof_sum_square_templates + sizeof_weights;
 
 #pragma omp parallel shared(t_global, templates, moveouts, data, n_templates, \
-                            cc_sums, weights, sum_square_templates) 
+                            cc_out, weights, sum_square_templates) 
     {
         float *templates_d = NULL;
         float *data_d = NULL;
         int *moveouts_d = NULL;
         float *cc_mat_d = NULL;
-        float *cc_sum_d = NULL;
+        float *cc_out_d = NULL;
         float *sum_square_templates_d = NULL;
         float *weights_d = NULL;
         int id;
@@ -211,7 +220,7 @@ void matched_filter(float *templates, float *sum_square_templates,
         cudaMalloc((void**)&moveouts_d, sizeof_moveouts);
         cudaMalloc((void**)&data_d, sizeof_data);
         cudaMalloc((void**)&cc_mat_d, sizeof_cc_mat);
-        cudaMalloc((void**)&cc_sum_d, sizeof_cc_sum);
+        cudaMalloc((void**)&cc_out_d, sizeof_cc_out);
         cudaMalloc((void**)&sum_square_templates_d, sizeof_sum_square_templates);
         cudaMalloc((void**)&weights_d, sizeof_weights);
 
@@ -229,7 +238,7 @@ void matched_filter(float *templates, float *sum_square_templates,
             int max_moveout;
             float *templates_d_t = NULL;
             int *moveouts_t = NULL, *moveouts_d_t = NULL;
-            float *cc_sums_t = NULL;
+            float *cc_out_t = NULL;
             float *sum_square_templates_d_t = NULL;
             float *weights_d_t = NULL;
             int maxSharedMem = props.sharedMemPerBlock; 
@@ -284,7 +293,6 @@ void matched_filter(float *templates, float *sum_square_templates,
                 else{
                     cs = chunk_size;
                 }
-                size_t sizeof_cc_sum_chunk = sizeof(float) * cs;
 
                 // define block and grid sizes for kernels
                 dim3 BS(BLOCKSIZE);
@@ -311,23 +319,32 @@ void matched_filter(float *templates, float *sum_square_templates,
                 gpuErrchk(cudaPeekAtLastError());
                 gpuErrchk(cudaDeviceSynchronize());
 
-                // weighted sum of correlation coefficients
-                cudaMemset(cc_sum_d, 0, sizeof_cc_sum);
+                if (sum_cc > 0){
+                    // weighted sum of correlation coefficients
+                    cudaMemset(cc_out_d, 0, sizeof_cc_out);
 
-                // using a small block size seems to improve the speed of sum_cc 
-                dim3 BS_sum(32);
-                dim3 GS_sum(ceilf(cs / (float)BS_sum.x));
-                sum_cc<<<GS_sum, BS_sum>>>(cc_mat_d, cc_sum_d, weights_d_t,\
-                                           n_stations, n_components,\
-                                           n_corr_t, chunk_offset, cs);
+                    // using a small block size seems to improve the speed of sum_cc 
+                    dim3 BS_sum(32);
+                    dim3 GS_sum(ceilf(cs / (float)BS_sum.x));
+                    sum_cc<<<GS_sum, BS_sum>>>(cc_mat_d, cc_out_d, weights_d_t,\
+                                               n_stations, n_components,\
+                                               n_corr_t, chunk_offset, cs);
 
-                // return an error if something happened in the kernel (and crash the program)
-                gpuErrchk(cudaPeekAtLastError());
-                gpuErrchk(cudaDeviceSynchronize());
+                    // return an error if something happened in the kernel (and crash the program)
+                    gpuErrchk(cudaPeekAtLastError());
+                    gpuErrchk(cudaDeviceSynchronize());
 
-                // xfer cc_sum back to host
-                cc_sums_t = cc_sums + t_thread * n_corr + chunk_offset;
-                cudaMemcpy(cc_sums_t, cc_sum_d, sizeof_cc_sum_chunk, cudaMemcpyDeviceToHost);
+                    // xfer cc_sum back to host
+                    size_t sizeof_cc_out_chunk = sizeof(float) * cs;
+                    cc_out_t = cc_out + t_thread * n_corr + chunk_offset;
+                    cudaMemcpy(cc_out_t, cc_out_d, sizeof_cc_out_chunk, cudaMemcpyDeviceToHost);
+                }
+                else{
+                    // xfer cc_mat back to host
+                    size_t sizeof_cc_out_chunk = sizeof(float) * cs * n_stations * n_components;
+                    cc_out_t = cc_out + (t_thread * n_corr + chunk_offset) * n_stations * n_components;
+                    cudaMemcpy(cc_out_t, cc_out_d, sizeof_cc_out_chunk, cudaMemcpyDeviceToHost);
+                }
             }
             cudaDeviceSynchronize();
         } // while
@@ -337,7 +354,7 @@ void matched_filter(float *templates, float *sum_square_templates,
         cudaFree(moveouts_d);
         cudaFree(data_d);
         cudaFree(cc_mat_d);
-        cudaFree(cc_sum_d);
+        cudaFree(cc_out_d);
         cudaFree(sum_square_templates_d);
         cudaFree(weights_d);
 
