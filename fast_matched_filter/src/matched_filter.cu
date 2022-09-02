@@ -151,11 +151,13 @@ void matched_filter(float *templates, float *sum_square_templates,
                     size_t n_samples_template, size_t n_samples_data,
                     size_t n_templates, size_t n_stations,
                     size_t n_components, size_t n_corr,
-                    float *cc_out, int normalize, int sum_cc) {
+                    float *cc_out, int normalize, int sum_cc_mode) {
 
     int t_global = -1;
     int nGPUs;
     size_t Mb = MEGABYTES;
+    size_t sizeof_cc_out = 0;
+    size_t sizeof_cc_out_chunk = 0;
 
     // find the number of available GPUs
     cudaGetDeviceCount(&nGPUs);
@@ -168,13 +170,13 @@ void matched_filter(float *templates, float *sum_square_templates,
     size_t sizeof_moveouts = sizeof(int) * n_components * n_stations * n_templates;
     size_t sizeof_data = sizeof(float) * n_samples_data * n_stations * n_components;
     size_t sizeof_cc_mat = sizeof(float) * chunk_size * n_stations * n_components; // cc matrix for one template (and one chunk of data)
-    if (sum_cc > 0){
+    if (sum_cc_mode > 0){
         // return summed CC time series (memory efficient)
-        size_t sizeof_cc_out = sizeof(float) * chunk_size; // cc sums for one template (and one chunk of data)
+        sizeof_cc_out = sizeof(float) * chunk_size; // cc sums for one template (and one chunk of data)
     }
     else{
         // return one CC time series per channel
-        size_t sizeof_cc_out = sizeof_cc_mat;
+        sizeof_cc_out = sizeof_cc_mat;
     }
     size_t sizeof_sum_square_templates = sizeof(float) * n_templates * n_stations * n_components;
     size_t sizeof_weights = sizeof(float) * n_templates * n_stations * n_components;
@@ -319,7 +321,7 @@ void matched_filter(float *templates, float *sum_square_templates,
                 gpuErrchk(cudaPeekAtLastError());
                 gpuErrchk(cudaDeviceSynchronize());
 
-                if (sum_cc > 0){
+                if (sum_cc_mode > 0){
                     // weighted sum of correlation coefficients
                     cudaMemset(cc_out_d, 0, sizeof_cc_out);
 
@@ -335,15 +337,15 @@ void matched_filter(float *templates, float *sum_square_templates,
                     gpuErrchk(cudaDeviceSynchronize());
 
                     // xfer cc_sum back to host
-                    size_t sizeof_cc_out_chunk = sizeof(float) * cs;
+                    sizeof_cc_out_chunk = sizeof(float) * cs;
                     cc_out_t = cc_out + t_thread * n_corr + chunk_offset;
                     cudaMemcpy(cc_out_t, cc_out_d, sizeof_cc_out_chunk, cudaMemcpyDeviceToHost);
                 }
                 else{
                     // xfer cc_mat back to host
-                    size_t sizeof_cc_out_chunk = sizeof(float) * cs * n_stations * n_components;
+                    sizeof_cc_out_chunk = sizeof(float) * cs * n_stations * n_components;
                     cc_out_t = cc_out + (t_thread * n_corr + chunk_offset) * n_stations * n_components;
-                    cudaMemcpy(cc_out_t, cc_out_d, sizeof_cc_out_chunk, cudaMemcpyDeviceToHost);
+                    cudaMemcpy(cc_out_t, cc_mat_d, sizeof_cc_out_chunk, cudaMemcpyDeviceToHost);
                 }
             }
             cudaDeviceSynchronize();

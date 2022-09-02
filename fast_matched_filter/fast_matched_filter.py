@@ -39,8 +39,7 @@ try:
             + [ct.c_int] # normalize
     _libCPU.matched_filter_no_sum.argtypes = argtypes
     _libCPU.matched_filter_precise_no_sum.argtypes = argtypes \
-            + [ct.c_int] \ # normalize
-            + [ct.c_int]   # sum_cc
+            + [ct.c_int, ct.c_int]
     CPU_LOADED = True
 
 except OSError:
@@ -245,7 +244,7 @@ def matched_filter(templates, moveouts, weights, data, step, arch='cpu',
         args = args + (normalize,)
         _libCPU.matched_filter_precise_no_sum(*args)
     elif arch == 'gpu':
-        args = args + (normalize, int(sum_cc))
+        args = args + (normalize, int(network_sum))
         _libGPU.matched_filter(*args)
 
     if network_sum:
