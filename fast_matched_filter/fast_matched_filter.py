@@ -39,7 +39,7 @@ try:
             + [ct.c_int] # normalize
     _libCPU.matched_filter_no_sum.argtypes = argtypes
     _libCPU.matched_filter_precise_no_sum.argtypes = argtypes \
-            + [ct.c_int, ct.c_int]
+            + [ct.c_int]
     CPU_LOADED = True
 
 except OSError:
