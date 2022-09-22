@@ -44,3 +44,7 @@ If FMF was installed with pip:
 ```
 
 Matlab: The CPU version is called with the fast_matched_filter function
+
+## To do:
+
+- [ ] Update Matlab wrapper.
