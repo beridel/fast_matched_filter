@@ -279,7 +279,7 @@ def matched_filter(
     if network_sum:
         cc = cc.reshape(n_templates, n_corr)
     else:
-        cc = cc.reshape(n_templates, n_corr, n_stations, n_components)
+        cc = cc.reshape(n_templates, n_stations, n_components, n_corr)
     # check for zeros in the CC time series more or less thoroughly
     # depending on the value of 'check_zeros'
     if (check_zeros != False) and (check_zeros != "first") and (check_zeros != "all"):
