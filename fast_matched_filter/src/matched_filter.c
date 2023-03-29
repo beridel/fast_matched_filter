@@ -596,7 +596,7 @@ float network_corr_variable_precise(
                                data + d,
                                n_samples_template[component_offset],
                                normalize);
-            cc_sum += atanhf(cc * weights[component_offset] - FLT_EPSILON) * cc_norm[component_offset];
+            cc_sum += atanhf(cc - FLT_EPSILON) * cc_norm[component_offset];
         }
     }
     

@@ -38,8 +38,20 @@ try:
     _libCPU.matched_filter_precise.argtypes = argtypes + [ct.c_int]  # normalize
     _libCPU.matched_filter_no_sum.argtypes = argtypes
     _libCPU.matched_filter_precise_no_sum.argtypes = argtypes + [ct.c_int]
-    _libCPU.matched_filter_variable_precise.argtypes = argtypes + [ct.c_int]
-    _libCPU.matched_filter_variable_precise.argtypes[6] ct.POINTER(ct.c_int) # n_samples_template vector
+    _libCPU.matched_filter_variable_precise.argtypes = [ct.POINTER(ct.c_float),  # templates
+                                                        ct.POINTER(ct.c_float),  # sum of squares of templates
+                                                        ct.POINTER(ct.c_int),  # moveouts
+                                                        ct.POINTER(ct.c_float),  # data
+                                                        ct.POINTER(ct.c_float),  # weights
+                                                        ct.c_size_t,  # step
+                                                        ct.POINTER(ct.c_int),  # n_samples_template
+                                                        ct.c_size_t,  # n_samples_data
+                                                        ct.c_size_t,  # n_templates
+                                                        ct.c_size_t,  # n_stations
+                                                        ct.c_size_t,  # n_components
+                                                        ct.c_size_t,  # n_corr
+                                                        ct.POINTER(ct.c_float),  # cc_sums or cc
+                                                        ct.c_int]
     CPU_LOADED = True
 
 except OSError:
@@ -70,6 +82,7 @@ def matched_filter(
     weights,
     data,
     step,
+    n_samples_template=None,
     arch="cpu",
     check_zeros="first",
     normalize="short",
@@ -198,10 +211,18 @@ def matched_filter(
         print("Template and data dimensions are not compatible!")
         return
 
-    n_samples_template = templates.shape[-1]
-    if templates.shape != (n_templates, n_stations, n_components, n_samples_template):
+    if n_samples_template is None:
+        n_samples_template = templates.shape[-1]
+        max_samples_template = n_samples_template
+        variable_template_length = False
+    else:
+        variable_template_length = True
+        max_samples_template = np.max(n_samples_template)
+        n_samples_template = np.ascontiguousarray(n_samples_template.flatten(), dtype=np.int32)
+
+    if templates.shape != (n_templates, n_stations, n_components, max_samples_template):
         templates = templates.reshape(
-            n_templates, n_stations, n_components, n_samples_template
+            n_templates, n_stations, n_components, max_samples_template
         )
 
     n_samples_data = data.shape[-1]
@@ -226,7 +247,7 @@ def matched_filter(
         elif (n_templates * n_stations * n_components) / weights.size == 1.0:
             weights = weights.reshape(n_templates, n_stations, n_components)
 
-    n_corr = int((n_samples_data - n_samples_template) / step + 1)
+    n_corr = int((n_samples_data - max_samples_template) / step + 1)
 
     # compute sum of squares for templates
     sum_square_templates = np.sum(templates**2, axis=-1)
@@ -250,7 +271,8 @@ def matched_filter(
         )
 
     # list of arguments
-    if arch == "variable_precise":
+    if variable_template_length:
+        assert n_samples_template.shape == moveouts.shape
         args = (
             templates.ctypes.data_as(ct.POINTER(ct.c_float)),
             sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
@@ -258,7 +280,7 @@ def matched_filter(
             data.ctypes.data_as(ct.POINTER(ct.c_float)),
             weights.ctypes.data_as(ct.POINTER(ct.c_float)),
             step,
-            n_samples_template,
+            n_samples_template.ctypes.data_as(ct.POINTER(ct.c_int)),
             n_samples_data,
             n_templates,
             n_stations,
@@ -274,7 +296,7 @@ def matched_filter(
             data.ctypes.data_as(ct.POINTER(ct.c_float)),
             weights.ctypes.data_as(ct.POINTER(ct.c_float)),
             step,
-            n_samples_template.ctypes.data_as(ct.POINTER(ct.c_int)),
+            n_samples_template,
             n_samples_data,
             n_templates,
             n_stations,
@@ -291,16 +313,16 @@ def matched_filter(
         args = args + (normalize,)
         _libCPU.matched_filter_precise(*args)
     elif arch == "precise" and ~network_sum:
-        #args = args + (normalize,)
-        #_libCPU.matched_filter_variable_precise_no_sum(*args)
-        print("Not yet implemented!")
-        return
+        args = args + (normalize,)
+        _libCPU.matched_filter_precise_no_sum(*args)
     elif arch == "variable_precise" and network_sum:
         args = args + (normalize,)
         _libCPU.matched_filter_variable_precise(*args)
     elif arch == "variable_precise" and ~network_sum:
-        args = args + (normalize,)
-        _libCPU.matched_filter_precise_no_sum(*args)
+        #args = args + (normalize,)
+        #_libCPU.matched_filter_variable_precise_no_sum(*args)
+        print("Not yet implemented!")
+        return
     elif arch == "gpu":
         args = args + (normalize, int(network_sum))
         _libGPU.matched_filter(*args)
