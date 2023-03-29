@@ -38,6 +38,8 @@ try:
     _libCPU.matched_filter_precise.argtypes = argtypes + [ct.c_int]  # normalize
     _libCPU.matched_filter_no_sum.argtypes = argtypes
     _libCPU.matched_filter_precise_no_sum.argtypes = argtypes + [ct.c_int]
+    _libCPU.matched_filter_variable_precise.argtypes = argtypes + [ct.c_int]
+    _libCPU.matched_filter_variable_precise.argtypes[6] ct.POINTER(ct.c_int) # n_samples_template vector
     CPU_LOADED = True
 
 except OSError:
@@ -148,6 +150,8 @@ def matched_filter(
         loaded = False
     if arch.lower() == "precise" and CPU_LOADED is False:
         loaded = False
+    if arch.lower() == "variable_precise" and CPU_LOADED is False:
+        loaded = False
     elif arch.lower() == "gpu" and GPU_LOADED is False:
         loaded = False
     else:
@@ -246,21 +250,38 @@ def matched_filter(
         )
 
     # list of arguments
-    args = (
-        templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-        sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-        moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
-        data.ctypes.data_as(ct.POINTER(ct.c_float)),
-        weights.ctypes.data_as(ct.POINTER(ct.c_float)),
-        step,
-        n_samples_template,
-        n_samples_data,
-        n_templates,
-        n_stations,
-        n_components,
-        n_corr,
-        cc.ctypes.data_as(ct.POINTER(ct.c_float)),
-    )
+    if arch == "variable_precise":
+        args = (
+            templates.ctypes.data_as(ct.POINTER(ct.c_float)),
+            sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
+            moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
+            data.ctypes.data_as(ct.POINTER(ct.c_float)),
+            weights.ctypes.data_as(ct.POINTER(ct.c_float)),
+            step,
+            n_samples_template,
+            n_samples_data,
+            n_templates,
+            n_stations,
+            n_components,
+            n_corr,
+            cc.ctypes.data_as(ct.POINTER(ct.c_float)),
+        )
+    else:
+        args = (
+            templates.ctypes.data_as(ct.POINTER(ct.c_float)),
+            sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
+            moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
+            data.ctypes.data_as(ct.POINTER(ct.c_float)),
+            weights.ctypes.data_as(ct.POINTER(ct.c_float)),
+            step,
+            n_samples_template.ctypes.data_as(ct.POINTER(ct.c_int)),
+            n_samples_data,
+            n_templates,
+            n_stations,
+            n_components,
+            n_corr,
+            cc.ctypes.data_as(ct.POINTER(ct.c_float)),
+        )
 
     if arch == "cpu" and network_sum:
         _libCPU.matched_filter(*args)
@@ -270,6 +291,14 @@ def matched_filter(
         args = args + (normalize,)
         _libCPU.matched_filter_precise(*args)
     elif arch == "precise" and ~network_sum:
+        #args = args + (normalize,)
+        #_libCPU.matched_filter_variable_precise_no_sum(*args)
+        print("Not yet implemented!")
+        return
+    elif arch == "variable_precise" and network_sum:
+        args = args + (normalize,)
+        _libCPU.matched_filter_variable_precise(*args)
+    elif arch == "variable_precise" and ~network_sum:
         args = args + (normalize,)
         _libCPU.matched_filter_precise_no_sum(*args)
     elif arch == "gpu":
