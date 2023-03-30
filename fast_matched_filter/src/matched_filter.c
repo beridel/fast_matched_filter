@@ -402,7 +402,7 @@ void matched_filter_variable_precise(
 
 #pragma omp parallel for 
         for (size_t i = 0; i < n_corr; i++) {
-            cc_sum[cc_sum_offset + i] = tanhf(cc_sum[cc_sum_offset + i] / cc_norm_sum) + FLT_EPSILON;
+            cc_sum[cc_sum_offset + i] = tanhf(cc_sum[cc_sum_offset + i] / cc_norm_sum) + n_stations * n_components * FLT_EPSILON;
         }
     }
 
