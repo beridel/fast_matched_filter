@@ -318,6 +318,91 @@ void matched_filter_precise_no_sum(
     }
 }
 
+void matched_filter_variable_precise(
+    float *templates, float *sum_square_templates, int *moveouts,
+    float *data, float *weights, size_t step,
+    int *n_samples_template, size_t n_samples_data, size_t n_templates, size_t n_stations,
+    size_t n_components, size_t n_corr, float *cc_sum, int normalize)
+{
+    size_t start_i, stop_i, cc_i;
+    int max_samples_template = 0, min_moveout, max_moveout;
+    size_t network_offset, station_offset, cc_sum_offset;
+    int *moveouts_t = NULL, *n_samples_template_t = NULL;
+    float *templates_t = NULL, *sum_square_templates_t = NULL, *weights_t = NULL;
+    float *cc_norm = NULL, cc_norm_sum;
+
+    cc_norm = malloc(n_stations * n_components * sizeof(float));
+
+    
+    /* find longest template */
+    for (size_t tr = 0; tr < (n_templates * n_stations * n_components); tr++)
+    {
+        if (n_samples_template[tr] > max_samples_template)
+        {
+            max_samples_template = n_samples_template[tr];
+        }
+    }
+
+    /* run matched filter template by template */
+    for (size_t t = 0; t < n_templates; t++) {
+        network_offset = t * n_stations * n_components;
+        station_offset = t * n_stations;
+        cc_sum_offset = t * n_corr;
+
+        // find min/max moveout and template vector position
+        min_moveout = 0;
+        max_moveout = 0;
+        for (size_t ch = 0; ch < (n_stations * n_components); ch++)
+        {
+            if (moveouts[network_offset + ch] < min_moveout)
+                min_moveout = moveouts[network_offset + ch];
+            if (moveouts[network_offset + ch] > max_moveout)
+                max_moveout = moveouts[network_offset + ch];
+        }
+    
+        templates_t = templates + network_offset * max_samples_template;
+        moveouts_t = moveouts + network_offset;
+        weights_t = weights + network_offset;
+        sum_square_templates_t = sum_square_templates + network_offset;
+        n_samples_template_t = n_samples_template + network_offset;
+
+        /* calculate CC norm for each station based on number of samples per station */
+        cc_norm_sum = 0;
+        for (size_t ch = 0; ch < (n_stations * n_components); ch++)
+        {
+            cc_norm[ch] = 1. / sqrtf(1. / (n_samples_template[network_offset + ch] - 3)) * weights[network_offset + ch];
+            cc_norm_sum += cc_norm[ch];
+        }
+
+        start_i = (int)(ceilf(abs(min_moveout) / (float)step)) * step;
+        stop_i = n_samples_data - max_samples_template - max_moveout - step;
+
+#pragma omp parallel for private(cc_i)
+        for (size_t i = start_i; i < stop_i; i += step)
+        {
+            cc_i = i / step;
+            cc_sum[cc_sum_offset + cc_i] = network_corr_variable_precise(templates_t,
+                                                                         sum_square_templates_t,
+                                                                         moveouts_t,
+                                                                         data + i,
+                                                                         weights_t,
+                                                                         cc_norm,
+                                                                         n_samples_template_t,
+                                                                         max_samples_template,
+                                                                         n_samples_data,
+                                                                         n_stations,
+                                                                         n_components,
+                                                                         normalize);
+        }
+
+#pragma omp parallel for 
+        for (size_t i = 0; i < n_corr; i++) {
+            cc_sum[cc_sum_offset + i] = tanhf(cc_sum[cc_sum_offset + i] / cc_norm_sum) + n_stations * n_components * FLT_EPSILON * 10;
+        }
+    }
+
+    free(cc_norm);
+}
 //-------------------------------------------------------------------------
 //        computation of network correlation coefficients
 
@@ -368,7 +453,7 @@ float network_corr_precise(
     size_t n_stations, size_t n_components, int normalize)
 {
 
-    size_t d, dd, t;
+    size_t d, t;
     size_t station_offset, component_offset;
     float cc, cc_sum = 0; // output
 
@@ -388,12 +473,12 @@ float network_corr_precise(
 
             t = component_offset * n_samples_template;
             d = component_offset * n_samples_data + moveouts[component_offset];
-            dd = component_offset * (n_samples_data + 1) + moveouts[component_offset];
 
             cc = corrc_precise(templates + t,
                                sum_square_template[component_offset],
                                data + d,
-                               n_samples_template, normalize);
+                               n_samples_template,
+                               normalize);
             cc_sum += cc * weights[component_offset];
         }
     }
@@ -472,6 +557,45 @@ void network_corr_precise_no_sum(
                 n_samples_template, normalize);
         }
     }
+}
+
+float network_corr_variable_precise(
+    float *templates, float *sum_square_template, int *moveouts,
+    float *data, float *weights, float *cc_norm, int *n_samples_template, size_t max_samples_template,
+    size_t n_samples_data, size_t n_stations, size_t n_components, int normalize)
+{
+
+    size_t d, t;
+    size_t station_offset, component_offset;
+    float cc, cc_sum = 0; // output
+
+    for (size_t s = 0; s < n_stations; s++)
+    {
+
+        station_offset = s * n_components;
+
+        cc = 0;
+        for (size_t c = 0; c < n_components; c++)
+        {
+            component_offset = station_offset + c;
+            if (weights[component_offset] == 0)
+                continue;
+
+            // if ((i + moveouts[component_offset]) > n_samples_data - n_samples_template) continue;
+
+            t = component_offset * max_samples_template;
+            d = component_offset * n_samples_data + moveouts[component_offset];
+
+            cc = corrc_precise(templates + t,
+                               sum_square_template[component_offset],
+                               data + d,
+                               n_samples_template[component_offset],
+                               normalize);
+            cc_sum += atanhf(cc - 10 * FLT_EPSILON) * cc_norm[component_offset];
+        }
+    }
+    
+    return cc_sum;
 }
 
 //-------------------------------------------------------------------------
