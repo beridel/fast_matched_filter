@@ -335,16 +335,11 @@ void matched_filter_variable_precise(
 
     
     /* find longest template */
-    for (size_t t = 0; t < n_templates; t++)
+    for (size_t tr = 0; tr < (n_templates * n_stations * n_components); tr++)
     {
-        network_offset = t * n_stations * n_components;
-
-        for (size_t ch = 0; ch < (n_stations * n_components); ch++)
+        if (n_samples_template[tr] > max_samples_template)
         {
-            if (n_samples_template[network_offset + ch] > max_samples_template)
-            {
-                max_samples_template = n_samples_template[network_offset + ch];
-            }
+            max_samples_template = n_samples_template[tr];
         }
     }
 
@@ -402,7 +397,7 @@ void matched_filter_variable_precise(
 
 #pragma omp parallel for 
         for (size_t i = 0; i < n_corr; i++) {
-            cc_sum[cc_sum_offset + i] = tanhf(cc_sum[cc_sum_offset + i] / cc_norm_sum) + n_stations * n_components * FLT_EPSILON;
+            cc_sum[cc_sum_offset + i] = tanhf(cc_sum[cc_sum_offset + i] / cc_norm_sum) + n_stations * n_components * FLT_EPSILON * 10;
         }
     }
 
@@ -596,7 +591,7 @@ float network_corr_variable_precise(
                                data + d,
                                n_samples_template[component_offset],
                                normalize);
-            cc_sum += atanhf(cc - FLT_EPSILON) * cc_norm[component_offset];
+            cc_sum += atanhf(cc - 10 * FLT_EPSILON) * cc_norm[component_offset];
         }
     }
     

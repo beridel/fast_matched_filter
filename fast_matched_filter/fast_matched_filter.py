@@ -38,7 +38,7 @@ try:
     _libCPU.matched_filter_precise.argtypes = argtypes + [ct.c_int]  # normalize
     _libCPU.matched_filter_no_sum.argtypes = argtypes
     _libCPU.matched_filter_precise_no_sum.argtypes = argtypes + [ct.c_int]
-    _libCPU.matched_filter_variable_precise.argtypes = argtypes[0:6] + [ct.POINTER(ct.c_int)] + argtypes[7:]
+    _libCPU.matched_filter_variable_precise.argtypes = argtypes[0:6] + [ct.POINTER(ct.c_int)] + argtypes[7:] + [ct.c_int]
     CPU_LOADED = True
 
 except OSError:
