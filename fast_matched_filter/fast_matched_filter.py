@@ -258,24 +258,26 @@ def matched_filter(
         )
 
     # list of arguments
-     args = [
-            templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-            sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
-            moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
-            data.ctypes.data_as(ct.POINTER(ct.c_float)),
-            weights.ctypes.data_as(ct.POINTER(ct.c_float)),
-            step,
-            n_samples_template,
-            n_samples_data,
-            n_templates,
-            n_stations,
-            n_components,
-            n_corr,
-            cc.ctypes.data_as(ct.POINTER(ct.c_float)),
-        ]
+    args = (
+        templates.ctypes.data_as(ct.POINTER(ct.c_float)),
+        sum_square_templates.ctypes.data_as(ct.POINTER(ct.c_float)),
+        moveouts.ctypes.data_as(ct.POINTER(ct.c_int)),
+        data.ctypes.data_as(ct.POINTER(ct.c_float)),
+        weights.ctypes.data_as(ct.POINTER(ct.c_float)),
+        step,
+        n_samples_template,
+        n_samples_data,
+        n_templates,
+        n_stations,
+        n_components,
+        n_corr,
+        cc.ctypes.data_as(ct.POINTER(ct.c_float)),
+    )
     if variable_template_length:
         assert n_samples_template.shape == moveouts.shape
-        args[6] = n_samples_template.ctypes.data_as(ct.POINTER(ct.c_int))   
+        args_list = list(args)
+        args_list[6] = n_samples_template.ctypes.data_as(ct.POINTER(ct.c_int))   
+        args = tuple(args_list)
 
     if arch == "cpu" and network_sum:
         _libCPU.matched_filter(*args)
