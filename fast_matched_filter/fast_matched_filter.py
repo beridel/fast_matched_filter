@@ -203,6 +203,7 @@ def matched_filter(
         max_samples_template = n_samples_template
         variable_template_length = False
     else:
+        assert n_samples_template.shape == moveouts.shape
         variable_template_length = True
         max_samples_template = np.max(n_samples_template)
         n_samples_template = np.ascontiguousarray(n_samples_template.flatten(), dtype=np.int32)
@@ -274,7 +275,6 @@ def matched_filter(
         cc.ctypes.data_as(ct.POINTER(ct.c_float)),
     )
     if variable_template_length:
-        assert n_samples_template.shape == moveouts.shape
         args_list = list(args)
         args_list[6] = n_samples_template.ctypes.data_as(ct.POINTER(ct.c_int))   
         args = tuple(args_list)
