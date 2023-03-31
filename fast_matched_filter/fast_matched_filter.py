@@ -264,12 +264,12 @@ def matched_filter(
 
     if arch == "cpu" and network_sum:
         _libCPU.matched_filter(*args)
-    elif arch == "cpu" and ~network_sum:
+    elif arch == "cpu" and not network_sum:
         _libCPU.matched_filter_no_sum(*args)
     elif arch == "precise" and network_sum:
         args = args + (normalize,)
         _libCPU.matched_filter_precise(*args)
-    elif arch == "precise" and ~network_sum:
+    elif arch == "precise" and not network_sum:
         args = args + (normalize,)
         _libCPU.matched_filter_precise_no_sum(*args)
     elif arch == "gpu":
@@ -311,7 +311,7 @@ def matched_filter(
 
     if check_zeros:
         msg_threshold = 10
-        if ~network_sum:
+        if not network_sum:
             msg_threshold *= np.sum(weights[0, ...] > 0.0)
         for t in range(zeros.shape[0]):
             if zeros[t] > msg_threshold:
