@@ -292,7 +292,7 @@ def matched_filter(
     elif arch == "variable_precise" and network_sum:
         args = args + (normalize,)
         _libCPU.matched_filter_variable_precise(*args)
-    elif arch == "variable_precise" and ~network_sum:
+    elif arch == "variable_precise" and not network_sum:
         #args = args + (normalize,)
         #_libCPU.matched_filter_variable_precise_no_sum(*args)
         raise NotImplementedError("Variable precise without network sum is not yet implemented.")
