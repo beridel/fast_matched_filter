@@ -432,7 +432,7 @@ float network_corr(
         for (size_t c = 0; c < n_components; c++)
         {
             component_offset = station_offset + c;
-            if (weights[component_offset] == 0)
+            if (weights[component_offset] == 0.)
                 continue;
 
             // if ((i + moveouts[component_offset]) > n_samples_data - n_samples_template) continue;
@@ -472,7 +472,7 @@ float network_corr_precise(
         for (size_t c = 0; c < n_components; c++)
         {
             component_offset = station_offset + c;
-            if (weights[component_offset] == 0)
+            if (weights[component_offset] == 0.)
                 continue;
 
             // if ((i + moveouts[component_offset]) > n_samples_data - n_samples_template) continue;
@@ -510,7 +510,7 @@ void network_corr_no_sum(
         for (size_t c = 0; c < n_components; c++)
         {
             component_offset = station_offset + c;
-            if (weights[component_offset] == 0)
+            if (weights[component_offset] == 0.)
                 continue;
 
             // if ((i + moveouts[component_offset]) > n_samples_data - n_samples_template) continue;
@@ -547,7 +547,7 @@ void network_corr_precise_no_sum(
         for (size_t c = 0; c < n_components; c++)
         {
             component_offset = station_offset + c;
-            if (weights[component_offset] == 0)
+            if (weights[component_offset] == 0.)
                 continue;
 
             // if ((i + moveouts[component_offset]) > n_samples_data - n_samples_template) continue;
@@ -584,7 +584,7 @@ float network_corr_variable_precise(
         for (size_t c = 0; c < n_components; c++)
         {
             component_offset = station_offset + c;
-            if (weights[component_offset] == 0)
+            if (weights[component_offset] == 0.)
                 continue;
 
             // if ((i + moveouts[component_offset]) > n_samples_data - n_samples_template) continue;
