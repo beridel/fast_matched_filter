@@ -325,7 +325,8 @@ void matched_filter_variable_precise(
     size_t n_components, size_t n_corr, float *cc_sum, int normalize)
 {
     size_t start_i, stop_i, cc_i;
-    int max_samples_template = 0, min_moveout, max_moveout;
+    int max_samples_template = 0, min_moveout, max_moveout, n_traces_used;
+    float max_cc = 0;
     size_t network_offset, station_offset, cc_sum_offset;
     int *moveouts_t = NULL, *n_samples_template_t = NULL;
     float *templates_t = NULL, *sum_square_templates_t = NULL, *weights_t = NULL;
@@ -358,8 +359,13 @@ void matched_filter_variable_precise(
                 min_moveout = moveouts[network_offset + ch];
             if (moveouts[network_offset + ch] > max_moveout)
                 max_moveout = moveouts[network_offset + ch];
+            //
+            // find max possible cc and the number of used traces
+            max_cc += weights[network_offset + ch];
+            if (weights[network_offset + ch] != 0.)
+                n_traces_used += 1;
         }
-    
+        
         templates_t = templates + network_offset * max_samples_template;
         moveouts_t = moveouts + network_offset;
         weights_t = weights + network_offset;
@@ -397,7 +403,7 @@ void matched_filter_variable_precise(
 
 #pragma omp parallel for 
         for (size_t i = 0; i < n_corr; i++) {
-            cc_sum[cc_sum_offset + i] = tanhf(cc_sum[cc_sum_offset + i] / cc_norm_sum) + n_stations * n_components * FLT_EPSILON * 10;
+            cc_sum[cc_sum_offset + i] = (tanhf(cc_sum[cc_sum_offset + i] / cc_norm_sum) + n_traces_used * FLT_EPSILON * 10) * max_cc;
         }
     }
 
