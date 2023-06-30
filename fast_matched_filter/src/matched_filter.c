@@ -353,6 +353,7 @@ void matched_filter_variable_precise(
         // find min/max moveout and template vector position
         min_moveout = 0;
         max_moveout = 0;
+        n_traces_used = 0;
         for (size_t ch = 0; ch < (n_stations * n_components); ch++)
         {
             if (moveouts[network_offset + ch] < min_moveout)
