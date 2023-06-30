@@ -491,22 +491,47 @@ def test_matched_filter(
 
         templates[t, :, :, :n_samples_template] = template
 
-    weights = np.ones((n_templates, n_stations, n_components), dtype=np.float32) / (
-        n_stations * n_components
-    )
+    weights = np.ones((n_templates, n_stations, n_components), dtype=np.float32)
 
-    start_time = give_time()
-    cc_sum = matched_filter(
-        templates,
-        moveouts,
-        weights,
-        data,
-        step,
-        arch=arch,
-        check_zeros=check_zeros,
-        normalize=normalize,
-        network_sum=network_sum,
-    )
+    if arch == 'variable_precise':
+        base_length = n_samples_template
+        n_samples_template = np.zeros(moveouts.shape, dtype=np.int32)
+        for t in range(n_templates):
+            for s in range(n_stations):
+                n_samples_template[t, s, :] = np.int32(np.round(np.random.random_sample() * base_length / 2 + base_length / 2))
+
+        templates = templates[:, :, :, :np.max(n_samples_template)]
+        for t in range(n_templates):
+            for s in range(n_stations):
+                for c in range(n_components):
+                    templates[t, s, c, n_samples_template[t, s, c]:] = 0.
+
+        start_time = give_time()
+        cc_sum = matched_filter(
+            templates,
+            moveouts,
+            weights,
+            data,
+            step,
+            arch=arch,
+            n_samples_template=n_samples_template,
+            check_zeros=check_zeros,
+            normalize=normalize,
+            network_sum=network_sum,
+        )
+    else:
+        start_time = give_time()
+        cc_sum = matched_filter(
+            templates,
+            moveouts,
+            weights,
+            data,
+            step,
+            arch=arch,
+            check_zeros=check_zeros,
+            normalize=normalize,
+            network_sum=network_sum,
+        )
     stop_time = give_time()
 
     print(
@@ -522,4 +547,7 @@ def test_matched_filter(
         )
     )
 
-    return templates, moveouts, data, step, cc_sum, stop_time - start_time
+    if arch == 'variable_precise':
+        return templates, moveouts, data, step, cc_sum, n_samples_template, stop_time - start_time
+    else:
+        return templates, moveouts, data, step, cc_sum, stop_time - start_time
