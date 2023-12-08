@@ -85,50 +85,62 @@ def matched_filter(
 
     Parameters
     -----------
-    templates: numpy.ndarray
+    templates : numpy.ndarray
         4D (n_templates, n_stations, n_channels, n_tp_samples) or 3D
         (n_templates, n_traces, n_tp_samples) `numpy.ndarray` with the
         template waveforms.
-    moveouts: numpy.ndarray, int
+    moveouts : numpy.ndarray, int
         3D (n_templates, n_stations, n_channels) or 2D (n_templates, n_stations)
         `numpy.ndarray` with the moveouts, in samples.
-    weights: numpy.ndarray, float
+    weights : numpy.ndarray, float
         3D (n_templates, n_stations, n_channels) or 2D (n_stations, n_channels)
         `numpy.ndarray` with the channel weights. For a given template, the
         largest possible correlation coefficient is given by the sum of the
         weights. Make sure that the weights sum to one if you want CCs between
         1 and -1.
-    data: numpy.ndarray
+    data : numpy.ndarray
         3D (n_stations, n_channels, n_samples) or 2D (n_traces, n_samples)
         `numpy.ndarray` with the continuous waveforms.
-    step: scalar, int
+    step : scalar, int
         Time interval, in samples, between consecutive correlations.
-    arch: string, optional
-        One `'cpu'`, `'precise'` or `'gpu'`. The `'precise'` implementation
-        is a CPU implementation that slower but more accurate than `'cpu'`.
-        The GPU implementation is used if `arch='gpu'`. Default is `'cpu'`.
-    check_zeros: string, optional
+    n_samples_template : numpy.ndarray or None, optional
+        If not None, it must be a numpy.ndarray with same shape as `moveouts`.
+        Each element is the length, in samples, of the template waveform at
+        a given channel. Note that, for now, if n_samples_template is not None,
+        the `arch` key-word argument must be "variable_precise". Defaults to None.
+    arch : string, optional
+        One of "cpu", "precise", "variable_precise" or "gpu".
+        - "cpu": CPU implementation with optimized algorithm to compute the
+          denominator in the correlation coefficient.
+        - "precise": CPU implementation with non optimized but more accurate
+          algorithm to compute the denominator in the correlation coefficient.
+          This option might be useful when dealing with very large amplitude
+          waveforms.
+        - "variable_precise": CPU implementation similar to "precise" but also
+          allows to use variable template lengths at every channel.
+        - "gpu": GPU implementation.
+    check_zeros : string, optional
         Controls the verbosity level at the end of this routine when
         checking zeros in the time series of correlation coefficients (CCs).
         - False: No messages.
         - `'first'`: Check zeros on the first template's CCs (recommended).
         - `'all'`: Check zeros on each template's CCs. It can be useful for
         troubleshooting but in general this would print too many messages.
-
         Default is `'first'`.
-    normalize: string, optional
-        Either "short" or "full" - full is slower but removes the mean of the
-        data at every correlation. Short is the original implementation.
-        NB: When using normalize="short", the templates and the data sliding
-        windows must have zero means (high-pass filter the data if necessary).
-    network_sum: boolean, default to True
+    normalize : string, optional
+        Either "short" or "full".
+        - "full": Slow but removes the mean of the data at every correlation.
+        - "short": This is the original implementation. When using normalize="short",
+        the templates and the data sliding windows must have zero means (high-pass
+        filter the data if necessary).
+    network_sum : boolean, optional
         If True, returns the weighted sum of correlation coefficients across
         the station network. If False, returns the correlation coefficients
-        for each channel.
+        for each channel. Defaults to True.
 
     Returns
     --------
-    cc: numpy.ndarray, float
+    cc : numpy.ndarray, float
         If `network_sum=True`, 2D (n_templates, n_correlations) `numpy.ndarray`.
         If `network_sum=False`, 4D (n_templates, n_stations, n_components,
         n_correlations) `numpy.ndarray`. The number of correlations is
