@@ -48,3 +48,4 @@ Matlab: The CPU version is called with the fast_matched_filter function
 ## To do:
 
 - [ ] Update Matlab wrapper.
+- [ ] Implement all the new options for GPUs.
