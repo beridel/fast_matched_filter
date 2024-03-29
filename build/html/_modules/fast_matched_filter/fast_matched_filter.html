@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>fast_matched_filter.fast_matched_filter &mdash; Fast Matched Filter 1.5.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script src="../../_static/documentation_options.js?v=e0a75244"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Fast Matched Filter
+              <img src="../../_static/fmf.svg" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../updates.html">Updates</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Fast Matched Filter</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">fast_matched_filter.fast_matched_filter</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for fast_matched_filter.fast_matched_filter</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Python bindings for the fast_matched_filter C libraries</span>
+
+<span class="sd">:copyright:</span>
+<span class="sd">    William B. Frank and Eric Beauce</span>
+<span class="sd">:license:</span>
+<span class="sd">    GNU General Public License, Version 3</span>
+<span class="sd">    (https://www.gnu.org/licenses/gpl-3.0.en.html)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">ctypes</span> <span class="k">as</span> <span class="nn">ct</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;lib&quot;</span><span class="p">)</span>
+<span class="n">CPU_LOADED</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">GPU_LOADED</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="n">argtypes</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>  <span class="c1"># templates</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>  <span class="c1"># sum of squares of templates</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_int</span><span class="p">),</span>  <span class="c1"># moveouts</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>  <span class="c1"># data</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>  <span class="c1"># weights</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">c_size_t</span><span class="p">,</span>  <span class="c1"># step</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">c_size_t</span><span class="p">,</span>  <span class="c1"># n_samples_template</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">c_size_t</span><span class="p">,</span>  <span class="c1"># n_samples_data</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">c_size_t</span><span class="p">,</span>  <span class="c1"># n_templates</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">c_size_t</span><span class="p">,</span>  <span class="c1"># n_stations</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">c_size_t</span><span class="p">,</span>  <span class="c1"># n_components</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">c_size_t</span><span class="p">,</span>  <span class="c1"># n_corr</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>  <span class="c1"># cc_sums or cc</span>
+<span class="p">]</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">_libCPU</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;matched_filter_CPU.so&quot;</span><span class="p">))</span>
+    <span class="n">_libCPU</span><span class="o">.</span><span class="n">matched_filter</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="n">argtypes</span>
+    <span class="n">_libCPU</span><span class="o">.</span><span class="n">matched_filter_precise</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="n">argtypes</span> <span class="o">+</span> <span class="p">[</span><span class="n">ct</span><span class="o">.</span><span class="n">c_int</span><span class="p">]</span>  <span class="c1"># normalize</span>
+    <span class="n">_libCPU</span><span class="o">.</span><span class="n">matched_filter_no_sum</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="n">argtypes</span>
+    <span class="n">_libCPU</span><span class="o">.</span><span class="n">matched_filter_precise_no_sum</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="n">argtypes</span> <span class="o">+</span> <span class="p">[</span><span class="n">ct</span><span class="o">.</span><span class="n">c_int</span><span class="p">]</span>
+    <span class="n">CPU_LOADED</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="s2">&quot;Matched-filter CPU is not compiled! Should be here: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;matched_filter_CPU.so&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">CPU_LOADED</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">_libGPU</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;matched_filter_GPU.so&quot;</span><span class="p">))</span>
+    <span class="n">_libGPU</span><span class="o">.</span><span class="n">matched_filter</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="n">argtypes</span>
+    <span class="n">GPU_LOADED</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="s2">&quot;Matched-filter GPU is not compiled! Should be here: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;matched_filter_GPU.so&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">GPU_LOADED</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="matched_filter">
+<a class="viewcode-back" href="../../usage/api.html#fast_matched_filter.fast_matched_filter.matched_filter">[docs]</a>
+<span class="k">def</span> <span class="nf">matched_filter</span><span class="p">(</span>
+    <span class="n">templates</span><span class="p">,</span>
+    <span class="n">moveouts</span><span class="p">,</span>
+    <span class="n">weights</span><span class="p">,</span>
+    <span class="n">data</span><span class="p">,</span>
+    <span class="n">step</span><span class="p">,</span>
+    <span class="n">arch</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
+    <span class="n">check_zeros</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">,</span>
+    <span class="n">normalize</span><span class="o">=</span><span class="s2">&quot;short&quot;</span><span class="p">,</span>
+    <span class="n">network_sum</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the correlation coefficients between `templates` and `data`.</span>
+
+<span class="sd">    Scan the continuous waveforms `data` with the template waveforms</span>
+<span class="sd">    `templates` given the relative propagation times `moveouts` and compute</span>
+<span class="sd">    a time series of summed correlation coefficients. The weighted sum is</span>
+<span class="sd">    defined by `weights`. Try `normalize=&#39;full&#39;` and/or `arch=&#39;precise&#39; or &#39;gpu&#39;`</span>
+<span class="sd">    to achieve better numerical precision.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -----------</span>
+<span class="sd">    templates: numpy.ndarray</span>
+<span class="sd">        4D (n_templates, n_stations, n_channels, n_tp_samples) or 3D</span>
+<span class="sd">        (n_templates, n_traces, n_tp_samples) `numpy.ndarray` with the</span>
+<span class="sd">        template waveforms.</span>
+<span class="sd">    moveouts: numpy.ndarray, int</span>
+<span class="sd">        3D (n_templates, n_stations, n_channels) or 2D (n_templates, n_stations)</span>
+<span class="sd">        `numpy.ndarray` with the moveouts, in samples.</span>
+<span class="sd">    weights: numpy.ndarray, float</span>
+<span class="sd">        3D (n_templates, n_stations, n_channels) or 2D (n_stations, n_channels)</span>
+<span class="sd">        `numpy.ndarray` with the channel weights. For a given template, the</span>
+<span class="sd">        largest possible correlation coefficient is given by the sum of the</span>
+<span class="sd">        weights. Make sure that the weights sum to one if you want CCs between</span>
+<span class="sd">        1 and -1.</span>
+<span class="sd">    data: numpy.ndarray</span>
+<span class="sd">        3D (n_stations, n_channels, n_samples) or 2D (n_traces, n_samples)</span>
+<span class="sd">        `numpy.ndarray` with the continuous waveforms.</span>
+<span class="sd">    step: scalar, int</span>
+<span class="sd">        Time interval, in samples, between consecutive correlations.</span>
+<span class="sd">    arch: string, optional</span>
+<span class="sd">        One `&#39;cpu&#39;`, `&#39;precise&#39;` or `&#39;gpu&#39;`. The `&#39;precise&#39;` implementation</span>
+<span class="sd">        is a CPU implementation that slower but more accurate than `&#39;cpu&#39;`.</span>
+<span class="sd">        The GPU implementation is used if `arch=&#39;gpu&#39;`. Default is `&#39;cpu&#39;`.</span>
+<span class="sd">    check_zeros: string, optional</span>
+<span class="sd">        Controls the verbosity level at the end of this routine when</span>
+<span class="sd">        checking zeros in the time series of correlation coefficients (CCs).</span>
+<span class="sd">        - False: No messages.</span>
+<span class="sd">        - `&#39;first&#39;`: Check zeros on the first template&#39;s CCs (recommended).</span>
+<span class="sd">        - `&#39;all&#39;`: Check zeros on each template&#39;s CCs. It can be useful for</span>
+<span class="sd">        troubleshooting but in general this would print too many messages.</span>
+
+<span class="sd">        Default is `&#39;first&#39;`.</span>
+<span class="sd">    normalize: string, optional</span>
+<span class="sd">        Either &quot;short&quot; or &quot;full&quot; - full is slower but removes the mean of the</span>
+<span class="sd">        data at every correlation. Short is the original implementation.</span>
+<span class="sd">        NB: When using normalize=&quot;short&quot;, the templates and the data sliding</span>
+<span class="sd">        windows must have zero means (high-pass filter the data if necessary).</span>
+<span class="sd">    network_sum: boolean, default to True</span>
+<span class="sd">        If True, returns the weighted sum of correlation coefficients across</span>
+<span class="sd">        the station network. If False, returns the correlation coefficients</span>
+<span class="sd">        for each channel.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    --------</span>
+<span class="sd">    cc: numpy.ndarray, float</span>
+<span class="sd">        If `network_sum=True`, 2D (n_templates, n_correlations) `numpy.ndarray`.</span>
+<span class="sd">        If `network_sum=False`, 4D (n_templates, n_stations, n_components,</span>
+<span class="sd">        n_correlations) `numpy.ndarray`. The number of correlations is</span>
+<span class="sd">        controlled by `step`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">normalize</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="s2">&quot;short&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;full&quot;</span><span class="p">,</span>
+    <span class="p">),</span> <span class="s2">&quot;Only know short or full normalization methods&quot;</span>
+    <span class="k">if</span> <span class="n">normalize</span> <span class="o">==</span> <span class="s2">&quot;full&quot;</span><span class="p">:</span>
+        <span class="n">normalize</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">arch</span> <span class="o">!=</span> <span class="s2">&quot;cpu&quot;</span>
+        <span class="p">),</span> <span class="s2">&quot;Full normalization not supported with cpu arch - try arch=precise&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">normalize</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">arch</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;cpu&quot;</span> <span class="ow">and</span> <span class="n">CPU_LOADED</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">loaded</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">arch</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;precise&quot;</span> <span class="ow">and</span> <span class="n">CPU_LOADED</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">loaded</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="n">arch</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;gpu&quot;</span> <span class="ow">and</span> <span class="n">GPU_LOADED</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">loaded</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">loaded</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">loaded</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Compiled library for </span><span class="si">{}</span><span class="s2"> not loaded; exiting!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arch</span><span class="p">))</span>
+        <span class="k">return</span>
+
+    <span class="c1"># figure out and check input formats</span>
+    <span class="n">impossible_dimensions</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">templates</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span><span class="p">:</span>
+        <span class="n">n_templates</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">assert</span> <span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># check stations</span>
+        <span class="n">n_stations</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">templates</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># check components</span>
+            <span class="n">n_components</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">templates</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">n_components</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">impossible_dimensions</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">elif</span> <span class="n">templates</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span><span class="p">:</span>
+        <span class="n">n_templates</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># check stations</span>
+        <span class="n">n_stations</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">templates</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># check components</span>
+            <span class="n">n_components</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">templates</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">n_components</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">impossible_dimensions</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">impossible_dimensions</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="n">impossible_dimensions</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Template and data dimensions are not compatible!&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">n_samples_template</span> <span class="o">=</span> <span class="n">templates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">templates</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="n">n_samples_template</span><span class="p">):</span>
+        <span class="n">templates</span> <span class="o">=</span> <span class="n">templates</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="n">n_samples_template</span>
+        <span class="p">)</span>
+
+    <span class="n">n_samples_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="n">n_samples_data</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="n">n_samples_data</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="n">moveouts</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">weights</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="k">if</span> <span class="n">moveouts</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">n_templates</span> <span class="o">*</span> <span class="n">n_stations</span> <span class="o">*</span> <span class="n">n_components</span><span class="p">)</span> <span class="o">/</span> <span class="n">moveouts</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">n_components</span><span class="p">:</span>
+            <span class="n">moveouts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">moveouts</span><span class="p">,</span> <span class="n">n_components</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">n_templates</span> <span class="o">*</span> <span class="n">n_stations</span> <span class="o">*</span> <span class="n">n_components</span><span class="p">)</span> <span class="o">/</span> <span class="n">moveouts</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="n">moveouts</span> <span class="o">=</span> <span class="n">moveouts</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">weights</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">n_templates</span> <span class="o">*</span> <span class="n">n_stations</span> <span class="o">*</span> <span class="n">n_components</span><span class="p">)</span> <span class="o">/</span> <span class="n">weights</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">n_components</span><span class="p">:</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">n_components</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">n_templates</span> <span class="o">*</span> <span class="n">n_stations</span> <span class="o">*</span> <span class="n">n_components</span><span class="p">)</span> <span class="o">/</span> <span class="n">weights</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">)</span>
+
+    <span class="n">n_corr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">n_samples_data</span> <span class="o">-</span> <span class="n">n_samples_template</span><span class="p">)</span> <span class="o">/</span> <span class="n">step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># compute sum of squares for templates</span>
+    <span class="n">sum_square_templates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">templates</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">templates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">templates</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">sum_square_templates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span>
+        <span class="n">sum_square_templates</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+    <span class="p">)</span>
+
+    <span class="n">moveouts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">moveouts</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">weights</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+    <span class="c1"># Note: shouldn&#39;t need to enforce int here because they were np.int32 before</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">network_sum</span><span class="p">:</span>
+        <span class="n">cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_templates</span> <span class="o">*</span> <span class="n">n_corr</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+            <span class="n">n_templates</span> <span class="o">*</span> <span class="n">n_stations</span> <span class="o">*</span> <span class="n">n_components</span> <span class="o">*</span> <span class="n">n_corr</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+        <span class="p">)</span>
+
+    <span class="c1"># list of arguments</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">templates</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">)),</span>
+        <span class="n">sum_square_templates</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">)),</span>
+        <span class="n">moveouts</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_int</span><span class="p">)),</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">)),</span>
+        <span class="n">weights</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">)),</span>
+        <span class="n">step</span><span class="p">,</span>
+        <span class="n">n_samples_template</span><span class="p">,</span>
+        <span class="n">n_samples_data</span><span class="p">,</span>
+        <span class="n">n_templates</span><span class="p">,</span>
+        <span class="n">n_stations</span><span class="p">,</span>
+        <span class="n">n_components</span><span class="p">,</span>
+        <span class="n">n_corr</span><span class="p">,</span>
+        <span class="n">cc</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">c_float</span><span class="p">)),</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">arch</span> <span class="o">==</span> <span class="s2">&quot;cpu&quot;</span> <span class="ow">and</span> <span class="n">network_sum</span><span class="p">:</span>
+        <span class="n">_libCPU</span><span class="o">.</span><span class="n">matched_filter</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">arch</span> <span class="o">==</span> <span class="s2">&quot;cpu&quot;</span> <span class="ow">and</span> <span class="o">~</span><span class="n">network_sum</span><span class="p">:</span>
+        <span class="n">_libCPU</span><span class="o">.</span><span class="n">matched_filter_no_sum</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">arch</span> <span class="o">==</span> <span class="s2">&quot;precise&quot;</span> <span class="ow">and</span> <span class="n">network_sum</span><span class="p">:</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">args</span> <span class="o">+</span> <span class="p">(</span><span class="n">normalize</span><span class="p">,)</span>
+        <span class="n">_libCPU</span><span class="o">.</span><span class="n">matched_filter_precise</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">arch</span> <span class="o">==</span> <span class="s2">&quot;precise&quot;</span> <span class="ow">and</span> <span class="o">~</span><span class="n">network_sum</span><span class="p">:</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">args</span> <span class="o">+</span> <span class="p">(</span><span class="n">normalize</span><span class="p">,)</span>
+        <span class="n">_libCPU</span><span class="o">.</span><span class="n">matched_filter_precise_no_sum</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">arch</span> <span class="o">==</span> <span class="s2">&quot;gpu&quot;</span><span class="p">:</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">args</span> <span class="o">+</span> <span class="p">(</span><span class="n">normalize</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">network_sum</span><span class="p">))</span>
+        <span class="n">_libGPU</span><span class="o">.</span><span class="n">matched_filter</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">network_sum</span><span class="p">:</span>
+        <span class="n">cc</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_corr</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cc</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_corr</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">)</span>
+    <span class="c1"># check for zeros in the CC time series more or less thoroughly</span>
+    <span class="c1"># depending on the value of &#39;check_zeros&#39;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">check_zeros</span> <span class="o">!=</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">check_zeros</span> <span class="o">!=</span> <span class="s2">&quot;first&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">check_zeros</span> <span class="o">!=</span> <span class="s2">&quot;all&quot;</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;check_zeros should be False, &#39;first&#39;, or &#39;all&#39;. Set it to &quot;</span>
+            <span class="s2">&quot;the default value: &#39;first&#39;&quot;</span>
+        <span class="p">)</span>
+        <span class="n">check_zeros</span> <span class="o">=</span> <span class="s2">&quot;first&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">check_zeros</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">elif</span> <span class="n">check_zeros</span> <span class="o">==</span> <span class="s2">&quot;first&quot;</span><span class="p">:</span>
+        <span class="c1"># only check the first template</span>
+        <span class="k">if</span> <span class="n">network_sum</span><span class="p">:</span>
+            <span class="n">zeros</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                <span class="n">cc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_corr</span> <span class="o">-</span> <span class="n">moveouts</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="n">step</span><span class="p">)]</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">zeros</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                <span class="n">cc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_corr</span> <span class="o">-</span> <span class="n">moveouts</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="n">step</span><span class="p">)]</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># check all templates</span>
+        <span class="n">zeros</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">cc</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_corr</span> <span class="o">-</span> <span class="n">moveouts</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="n">step</span><span class="p">)]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_templates</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="o">==</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">check_zeros</span><span class="p">:</span>
+        <span class="n">msg_threshold</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="k">if</span> <span class="o">~</span><span class="n">network_sum</span><span class="p">:</span>
+            <span class="n">msg_threshold</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">zeros</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">zeros</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">msg_threshold</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> correlation computations were skipped on the </span><span class="si">{:d}</span><span class="s2">-th &quot;</span>
+                    <span class="s2">&quot;template. Can be caused by zeros in data, or too low &quot;</span>
+                    <span class="s2">&quot;amplitudes (try to increase the gain).&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">zeros</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">t</span><span class="p">)</span>
+                <span class="p">)</span>
+    <span class="k">return</span> <span class="n">cc</span></div>
+
+
+
+<div class="viewcode-block" id="test_matched_filter">
+<a class="viewcode-back" href="../../usage/api.html#fast_matched_filter.fast_matched_filter.test_matched_filter">[docs]</a>
+<span class="k">def</span> <span class="nf">test_matched_filter</span><span class="p">(</span>
+    <span class="n">n_templates</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">n_stations</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">n_components</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">template_duration</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">data_duration</span><span class="o">=</span><span class="mi">86400</span><span class="p">,</span>
+    <span class="n">sampling_rate</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">arch</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
+    <span class="n">check_zeros</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">,</span>
+    <span class="n">normalize</span><span class="o">=</span><span class="s2">&quot;short&quot;</span><span class="p">,</span>
+    <span class="n">network_sum</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test the `matched_filter` function.</span>
+
+<span class="sd">    Generate random data, templates, and moveouts, and run a matched-filter</span>
+<span class="sd">    search. The templates are sliced from the data, therefore the maximum</span>
+<span class="sd">    correlation coefficient should always be one if the program ran normally.</span>
+<span class="sd">    Try `normalize=&#39;full&#39;` and/or `arch=&#39;precise&#39; or &#39;gpu&#39;` to achieve better</span>
+<span class="sd">    numerical precision.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_templates: scalar, int, optional</span>
+<span class="sd">        Number of synthetic templates. Default to 1.</span>
+<span class="sd">    n_stations: scalar, int, optional</span>
+<span class="sd">        Number of stations. Default to 1.</span>
+<span class="sd">    n_components: scalar, int, optional</span>
+<span class="sd">        Number of components/channels. Default to 1.</span>
+<span class="sd">    template_duration: scalar, float, optional</span>
+<span class="sd">        Duration, in seconds, of the template waveforms. Default to 10s.</span>
+<span class="sd">    data_duration: scalar, float, optional</span>
+<span class="sd">        Duration, in seconds, of the data waveforms. Default to 86400s.</span>
+<span class="sd">    sampling_rate: scalar, float, optional</span>
+<span class="sd">        Sampling frequency (Hz) of the waveforms. Default to 100Hz.</span>
+<span class="sd">    step: scalar, int</span>
+<span class="sd">        Time interval, in samples, between consecutive correlations.</span>
+<span class="sd">    arch: string, optional</span>
+<span class="sd">        One `&#39;cpu&#39;`, `&#39;precise&#39;` or `&#39;gpu&#39;`. The `&#39;precise&#39;` implementation</span>
+<span class="sd">        is a CPU implementation that slower but more accurate than `&#39;cpu&#39;`.</span>
+<span class="sd">        The GPU implementation is used if `arch=&#39;gpu&#39;`. Default is `&#39;cpu&#39;`.</span>
+<span class="sd">    check_zeros: string, optional</span>
+<span class="sd">        Controls the verbosity level at the end of this routine when</span>
+<span class="sd">        checking zeros in the time series of correlation coefficients (CCs).</span>
+<span class="sd">        - False: No messages.</span>
+<span class="sd">        - `&#39;first&#39;`: Check zeros on the first template&#39;s CCs (recommended).</span>
+<span class="sd">        - `&#39;all&#39;`: Check zeros on each template&#39;s CCs. It can be useful for</span>
+<span class="sd">        troubleshooting but in general this would print too many messages.</span>
+
+<span class="sd">        Default is `&#39;first&#39;`.</span>
+<span class="sd">    normalize: string, optional</span>
+<span class="sd">        Either &quot;short&quot; or &quot;full&quot; - full is slower but removes the mean of the</span>
+<span class="sd">        data at every correlation. Short is the original implementation.</span>
+<span class="sd">        NB: When using normalize=&quot;short&quot;, the templates and the data sliding</span>
+<span class="sd">        windows must have zero means (high-pass filter the data if necessary).</span>
+<span class="sd">    network_sum: boolean, default to True</span>
+<span class="sd">        If True, returns the weighted sum of correlation coefficients across</span>
+<span class="sd">        the station network. If False, returns the correlation coefficients</span>
+<span class="sd">        for each channel.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    --------</span>
+<span class="sd">    templates: numpy.ndarray</span>
+<span class="sd">        (n_templates, n_stations, n_components, n_tp_samples) `numpy.ndarray`</span>
+<span class="sd">        with the random template waveforms generated by the function.</span>
+<span class="sd">    moveouts: numpy.ndarray</span>
+<span class="sd">        (n_templates, n_stations, n_components) `numpy.ndarray` with the random</span>
+<span class="sd">        moveouts generated by the function.</span>
+<span class="sd">    data: numpy.ndarray</span>
+<span class="sd">        (n_stations, n_components, n_samples) `numpy.ndarray` with the random</span>
+<span class="sd">        data generated by the function.</span>
+<span class="sd">    step: scalar, int</span>
+<span class="sd">        Time interval, in samples, between consecutive correlations.</span>
+<span class="sd">    cc_sums: numpy.ndarray, float</span>
+<span class="sd">        2D (n_templates, n_correlations) `numpy.ndarray`. The number of</span>
+<span class="sd">        correlations is controlled by `step`.</span>
+<span class="sd">    run_time: scalar, float</span>
+<span class="sd">        Time spent by FMF to compute the correlation coefficients.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span> <span class="k">as</span> <span class="n">give_time</span>
+
+    <span class="n">template_times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random_sample</span><span class="p">(</span><span class="n">n_templates</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">data_duration</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="c1"># if step is not 1, not very likely that random times will be found</span>
+    <span class="k">if</span> <span class="n">step</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">template_times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">template_times</span> <span class="o">/</span> <span class="p">(</span><span class="n">step</span> <span class="o">/</span> <span class="n">sampling_rate</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="n">step</span> <span class="o">/</span> <span class="n">sampling_rate</span>
+        <span class="p">)</span>
+    <span class="c1"># determines how many templates there are</span>
+
+    <span class="n">min_moveout</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">max_moveout</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">moveouts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_templates</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_stations</span><span class="p">):</span>
+            <span class="n">moveouts</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random_sample</span><span class="p">(</span><span class="n">n_components</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">max_moveout</span> <span class="o">-</span> <span class="n">min_moveout</span><span class="p">)</span>
+            <span class="p">)</span> <span class="o">+</span> <span class="n">min_moveout</span>
+    <span class="n">moveouts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">moveouts</span> <span class="o">*</span> <span class="n">sampling_rate</span><span class="p">))</span>
+
+    <span class="c1"># generate data</span>
+    <span class="n">n_samples_data</span> <span class="o">=</span> <span class="n">data_duration</span> <span class="o">*</span> <span class="n">sampling_rate</span>
+    <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n_samples_data</span><span class="p">))</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="n">n_samples_data</span><span class="p">):</span>
+        <span class="n">n_samples_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">n_samples_data</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;The data duration times the sampling rate yields a non-integer number of samples !&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Adjust your input parameters so that this product is an integer.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random_sample</span><span class="p">((</span><span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="n">n_samples_data</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+        <span class="s2">&quot;float32&quot;</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_stations</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_components</span><span class="p">):</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="p">:])</span>
+
+    <span class="c1"># generate templates from data</span>
+    <span class="n">n_samples_template</span> <span class="o">=</span> <span class="n">template_duration</span> <span class="o">*</span> <span class="n">sampling_rate</span>
+    <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n_samples_template</span><span class="p">))</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="n">n_samples_template</span><span class="p">):</span>
+        <span class="n">n_samples_template</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">n_samples_template</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;The template duration times the sampling rate yields a non-integer number of samples !&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Adjust your input parameters so that this product is an integer.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">n_templates</span> <span class="o">=</span> <span class="n">template_times</span><span class="o">.</span><span class="n">size</span>
+    <span class="n">templates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="n">n_samples_template</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_templates</span><span class="p">):</span>
+        <span class="n">start_t</span> <span class="o">=</span> <span class="n">template_times</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">sampling_rate</span>
+
+        <span class="n">template</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="n">n_samples_template</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_stations</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_components</span><span class="p">):</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_t</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">moveouts</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">]))</span>
+                <span class="n">stop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_t</span> <span class="o">+</span> <span class="n">n_samples_template</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">moveouts</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">]))</span>
+                <span class="n">template</span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="p">:</span><span class="n">n_samples_template</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span>
+
+        <span class="n">templates</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:</span><span class="n">n_samples_template</span><span class="p">]</span> <span class="o">=</span> <span class="n">template</span>
+
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">n_templates</span><span class="p">,</span> <span class="n">n_stations</span><span class="p">,</span> <span class="n">n_components</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
+        <span class="n">n_stations</span> <span class="o">*</span> <span class="n">n_components</span>
+    <span class="p">)</span>
+
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">give_time</span><span class="p">()</span>
+    <span class="n">cc_sum</span> <span class="o">=</span> <span class="n">matched_filter</span><span class="p">(</span>
+        <span class="n">templates</span><span class="p">,</span>
+        <span class="n">moveouts</span><span class="p">,</span>
+        <span class="n">weights</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">,</span>
+        <span class="n">step</span><span class="p">,</span>
+        <span class="n">arch</span><span class="o">=</span><span class="n">arch</span><span class="p">,</span>
+        <span class="n">check_zeros</span><span class="o">=</span><span class="n">check_zeros</span><span class="p">,</span>
+        <span class="n">normalize</span><span class="o">=</span><span class="n">normalize</span><span class="p">,</span>
+        <span class="n">network_sum</span><span class="o">=</span><span class="n">network_sum</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">stop_time</span> <span class="o">=</span> <span class="n">give_time</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="s2">&quot;Matched filter (</span><span class="si">{}</span><span class="s2">) for </span><span class="si">{}</span><span class="s2"> templates on </span><span class="si">{}</span><span class="s2"> stations/</span><span class="si">{}</span><span class="s2"> &quot;</span>
+        <span class="s2">&quot;components over </span><span class="si">{}</span><span class="s2"> samples (</span><span class="si">{}</span><span class="s2"> step) ran in </span><span class="si">{:.3f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">arch</span><span class="p">,</span>
+            <span class="n">n_templates</span><span class="p">,</span>
+            <span class="n">n_stations</span><span class="p">,</span>
+            <span class="n">n_components</span><span class="p">,</span>
+            <span class="n">n_samples_data</span><span class="p">,</span>
+            <span class="n">step</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">stop_time</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="p">,</span> <span class="n">moveouts</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">cc_sum</span><span class="p">,</span> <span class="n">stop_time</span> <span class="o">-</span> <span class="n">start_time</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Eric Beauce and William B. Frank.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
