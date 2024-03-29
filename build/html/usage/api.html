@@ -125,12 +125,10 @@ weights. Make sure that the weights sum to one if you want CCs between
 Each element is the length, in samples, of the template waveform at
 a given channel. Note that, for now, if n_samples_template is not None,
 the <cite>arch</cite> key-word argument must be “variable_precise”. Defaults to None.</p></li>
-<li><p><strong>arch</strong> (<em>string</em><em>, </em><em>optional</em>) – <p>One of “cpu”, “precise”, “variable_precise” or “gpu”.
-- “cpu”: CPU implementation with optimized algorithm to compute the</p>
-<blockquote>
-<div><p>denominator in the correlation coefficient.</p>
-</div></blockquote>
+<li><p><strong>arch</strong> (<em>string</em><em>, </em><em>optional</em>) – <p>One of “cpu”, “precise”, “variable_precise” or “gpu”.</p>
 <ul>
+<li><p>”cpu”: CPU implementation with optimized algorithm to compute the
+denominator in the correlation coefficient.</p></li>
 <li><p>”precise”: CPU implementation with non optimized but more accurate
 algorithm to compute the denominator in the correlation coefficient.
 This option might be useful when dealing with very large amplitude
@@ -140,18 +138,24 @@ allows to use variable template lengths at every channel.</p></li>
 <li><p>”gpu”: GPU implementation.</p></li>
 </ul>
 </p></li>
-<li><p><strong>check_zeros</strong> (<em>string</em><em>, </em><em>optional</em>) – Controls the verbosity level at the end of this routine when
-checking zeros in the time series of correlation coefficients (CCs).
-- False: No messages.
-- <cite>‘first’</cite>: Check zeros on the first template’s CCs (recommended).
-- <cite>‘all’</cite>: Check zeros on each template’s CCs. It can be useful for
-troubleshooting but in general this would print too many messages.
-Default is <cite>‘first’</cite>.</p></li>
-<li><p><strong>normalize</strong> (<em>string</em><em>, </em><em>optional</em>) – Either “short” or “full”.
-- “full”: Slow but removes the mean of the data at every correlation.
-- “short”: This is the original implementation. When using normalize=”short”,
-the templates and the data sliding windows must have zero means (high-pass
-filter the data if necessary).</p></li>
+<li><p><strong>check_zeros</strong> (<em>string</em><em>, </em><em>optional</em>) – <p>Controls the verbosity level at the end of this routine when
+checking zeros in the time series of correlation coefficients (CCs).</p>
+<ul>
+<li><p>False: No messages.</p></li>
+<li><p><cite>’first’</cite>: Check zeros on the first template’s CCs (recommended).</p></li>
+<li><p><cite>’all’</cite>: Check zeros on each template’s CCs. It can be useful for</p></li>
+</ul>
+<p>troubleshooting but in general this would print too many messages.
+Default is <cite>‘first’</cite>.</p>
+</p></li>
+<li><p><strong>normalize</strong> (<em>string</em><em>, </em><em>optional</em>) – <p>Either “short” or “full”.</p>
+<ul>
+<li><p>”full”: Slow but removes the mean of the data at every correlation.</p></li>
+<li><p>”short”: This is the original implementation. When using normalize=”short”,</p></li>
+</ul>
+<p>the templates and the data sliding windows must have zero means (high-pass
+filter the data if necessary).</p>
+</p></li>
 <li><p><strong>network_sum</strong> (<em>boolean</em><em>, </em><em>optional</em>) – If True, returns the weighted sum of correlation coefficients across
 the station network. If False, returns the correlation coefficients
 for each channel. Defaults to True.</p></li>
@@ -192,11 +196,13 @@ numerical precision.</p>
 is a CPU implementation that slower but more accurate than <cite>‘cpu’</cite>.
 The GPU implementation is used if <cite>arch=’gpu’</cite>. Default is <cite>‘cpu’</cite>.</p></li>
 <li><p><strong>check_zeros</strong> (<em>string</em><em>, </em><em>optional</em>) – <p>Controls the verbosity level at the end of this routine when
-checking zeros in the time series of correlation coefficients (CCs).
-- False: No messages.
-- <cite>‘first’</cite>: Check zeros on the first template’s CCs (recommended).
-- <cite>‘all’</cite>: Check zeros on each template’s CCs. It can be useful for
-troubleshooting but in general this would print too many messages.</p>
+checking zeros in the time series of correlation coefficients (CCs).</p>
+<ul>
+<li><p>False: No messages.</p></li>
+<li><p><cite>’first’</cite>: Check zeros on the first template’s CCs (recommended).</p></li>
+<li><p><cite>’all’</cite>: Check zeros on each template’s CCs. It can be useful for</p></li>
+</ul>
+<p>troubleshooting but in general this would print too many messages.</p>
 <p>Default is <cite>‘first’</cite>.</p>
 </p></li>
 <li><p><strong>normalize</strong> (<em>string</em><em>, </em><em>optional</em>) – Either “short” or “full” - full is slower but removes the mean of the

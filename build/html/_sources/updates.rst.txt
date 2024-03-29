@@ -1,6 +1,13 @@
 Updates
 =======
 
+1.5.0
+-----
+* New key-word argument :py:data:`network_sum` can be :py:data:`True`, to compute
+  network-summed correlation coefficients (default behavior, identical to
+  previous versions) or :py:data:`False`, to compute singe-channel correlation
+  coefficients.
+
 1.4.0
 -----
 * New key-word argument :py:data:`normalize` can be :py:data:`'short'` or :py:data:`'full'`. :py:data:`'short'` computes a simplified correlation coefficient that assumes the signal in every sliding window has a mean of zero (initial and default implementation of FMF). :py:data:`'full'` computes the full correlation coefficient and is slower. NB: :py:data:`'full'` cannot be used with :py:data:`arch='cpu'`.
