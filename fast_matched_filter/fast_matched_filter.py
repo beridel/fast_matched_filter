@@ -110,6 +110,7 @@ def matched_filter(
         the `arch` key-word argument must be "variable_precise". Defaults to None.
     arch : string, optional
         One of "cpu", "precise", "variable_precise" or "gpu".
+
         - "cpu": CPU implementation with optimized algorithm to compute the
           denominator in the correlation coefficient.
         - "precise": CPU implementation with non optimized but more accurate
@@ -122,6 +123,7 @@ def matched_filter(
     check_zeros : string, optional
         Controls the verbosity level at the end of this routine when
         checking zeros in the time series of correlation coefficients (CCs).
+
         - False: No messages.
         - `'first'`: Check zeros on the first template's CCs (recommended).
         - `'all'`: Check zeros on each template's CCs. It can be useful for
@@ -129,6 +131,7 @@ def matched_filter(
         Default is `'first'`.
     normalize : string, optional
         Either "short" or "full".
+
         - "full": Slow but removes the mean of the data at every correlation.
         - "short": This is the original implementation. When using normalize="short",
         the templates and the data sliding windows must have zero means (high-pass
@@ -403,6 +406,7 @@ def test_matched_filter(
     check_zeros: string, optional
         Controls the verbosity level at the end of this routine when
         checking zeros in the time series of correlation coefficients (CCs).
+
         - False: No messages.
         - `'first'`: Check zeros on the first template's CCs (recommended).
         - `'all'`: Check zeros on each template's CCs. It can be useful for
